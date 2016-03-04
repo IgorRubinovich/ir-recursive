@@ -1,0 +1,29 @@
+{
+  "name": "ir-recursive",
+  "main": "ir-recursive.html",
+  "version": "0.3",
+  "authors": [
+    "Igor Rubinovich <igor.rubinovih@gmail.com>"
+  ],
+  "description": "A templated recursive element for Polymer 1.0",
+  "keywords": [
+	"embed",
+    "textarea",
+    "contenteditable",
+    "web-component",
+    "web-components",
+    "polymer"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "webcomponentsjs": "~0.7.7",
+    "polymer": "~1.0.8",
+  }
+}

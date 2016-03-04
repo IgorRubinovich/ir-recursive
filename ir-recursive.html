@@ -1,0 +1,261 @@
+<dom-module id="ir-recursive">  
+  <style>
+    :host {
+      display: block;
+    }
+  </style>
+  <template>
+    <content id="templates" select="template.item"></content>
+  </template>
+</dom-module>
+<script>
+  (function () {
+    Polymer({
+		is: 'ir-recursive',
+		properties: {
+			data: {
+				type: Object,
+				notify: true
+			},
+			
+			itemTemplate: {
+				type: Object,
+				notify: true
+			},
+			initSelector: {
+				type: String,
+				notify: true
+			},
+			onInit: {
+				type: String,
+				notify: true
+			},
+			maxDepth: {
+				type: Number,
+				notify: true
+			}
+		},
+		  
+		behaviors: [
+			Polymer.Templatizer
+		],
+		
+		expand : function(ev) {
+			ev.target._height = 0;
+			ev.target.style.height = ev.target._height;
+		},
+		collapse : function(ev) {
+			ev._height = 0;
+			ev.style.height = 0;
+		},
+		
+		ready: function() {
+			var ri, template = Polymer.dom(this.$.templates).getDistributedNodes()[0];
+			this.itemTemplate = template;
+			//this.templatize(template);
+			//this.itemTemplate = template;
+			
+			this.data = {
+				title : "Some title A",
+				content : "Some content",
+				children : [
+					{
+						title : "Some child title A1",
+						content : "Some child content",
+						children : [
+							{
+								title : "Some child title A1.1",
+								content : "Some child content"
+							},
+							{
+								title : "Some child title A1.2",
+								content : "Some child content",
+								children : [
+									{
+										title : "Some child title A2.21",
+										content : "Some child content"
+									},
+									{
+										title : "Some child title A2.22",
+										content : "Some child content"
+									}						
+								]
+							}						
+						]
+					},
+					{
+						title : "Some child title A2",
+						content : "Some child content",
+						children : [
+							{
+								title : "Some child title A2.1",
+								content : "Some child content"
+							},
+							{
+								title : "Some child title A2.2",
+								content : "Some child content"
+							}						
+						]
+					}
+				]				
+			}
+			
+			ri = document.createElement('ir-recursive-item');
+			ri.itemTemplate = template;
+			ri.data = this.data;	
+			ri.initSelector = this.initSelector;
+			ri.onInit  = this.onInit;
+			ri.maxDepth = this.maxDepth;
+			ri.depth = 0;
+			
+			Polymer.dom(this.root).appendChild(ri);
+		}
+    });
+	
+	var behavior = {
+	}
+  })();
+</script> 
+
+<dom-module id="ir-recursive-item">
+  <style>
+    :host {
+      display: block;
+    }
+  </style>
+  <template>
+  </template>
+</dom-module>
+
+<script>
+	(function () {
+		Polymer({
+			is: 'ir-recursive-item',
+			properties: {
+				data: {
+					type: Object,
+					notify: true,
+				},
+				itemTemplate: {
+					type : Object,
+					notify: true
+				},
+				initSelector: {
+					type: String,
+					notify: true
+				},
+				onInit: {
+					type: String,
+					notify: true
+				},
+				maxDepth: {
+					type: Number,
+					notify: true
+				},
+				depth: {
+					type: Number,
+					notify: true,
+					value: 0
+				}
+			},
+			behaviors: [
+				Polymer.Templatizer
+			],
+
+			expand : function(ev) {
+				this.collapsed = false;
+				this.updateStyles();
+
+				for(i = 0; i <= 400; i += 100)
+					setTimeout(function() {
+						this.fire('update-styles');
+					}.bind(this), i);
+			},
+			
+			collapse : function(ev) {
+				this.collapsed = true;
+				this.childrenContainer.style.transition = "all 300ms"
+				this.childrenContainer._height = this.childrenContainer.getBoundingClientRect().height || this.childrenContainer._height;
+				this.updateStyles();
+				for(i = 0; i <= 400; i += 100)
+					setTimeout(function() {
+						this.fire('update-styles');
+					}.bind(this), i);
+			},
+			
+			updateStyles : function() {
+				var totalHeight = 0, i = 0;
+
+				if(!this.childrenContainer)
+					return;
+
+				if(this.collapsed)
+					this.childrenContainer.style.height = 0 + "px";
+				else
+					this.childrenContainer.style.height = this.childrenContainer._height + "px";
+					
+				while(i < this.childrenContainer.childNodes.length)
+					totalHeight += this.childrenContainer.childNodes[i++].getBoundingClientRect().height;
+
+				this.childrenContainer._height = totalHeight;
+				if(!this.collapsed)
+					this.childrenContainer.style.height = totalHeight + "px";
+				
+				this.expanders.forEach(function(el) { el.style.display = this.collapsed ? "inline-block" : "none" }.bind(this));
+				this.collapsers.forEach(function(el) { el.style.display = !this.collapsed ? "inline-block" : "none" }.bind(this));
+			},
+
+			attached: function() {
+				var i = 0, childrenContainer, child;
+				if(!this.itemTemplate)
+					return;
+								
+				this.templatize(this.itemTemplate);
+
+				var clone = this.stamp(this.commands), e, c;
+
+				console.log(this.data);
+				
+				clone.data = this.data;
+				clone.itemTemplate = this.itemTemplate;
+				
+				Polymer.dom(this.root).appendChild(clone.root);
+				
+				this.childrenContainer = childrenContainer = Polymer.dom(this.root).querySelector(".children");
+				this.expanders = e = Array.prototype.slice.call(Polymer.dom(this.root).querySelectorAll("[expand]"));
+				this.collapsers = c = Array.prototype.slice.call(Polymer.dom(this.root).querySelectorAll("[collapse]"));
+				e.forEach(function(el) { 
+					el.style.display = 'none';
+					el.addEventListener('click', this.expand.bind(this));
+				}.bind(this));
+				c.forEach(function(el) { 
+					el.addEventListener('click', this.collapse.bind(this));
+				}.bind(this));
+				
+				this.addEventListener('update-styles', this.updateStyles );
+				if(this.data.children)
+					while(i < this.data.children.length)
+					{
+						child = document.createElement('ir-recursive-item');
+						child.data = this.data.children[i];
+						child.depth = this.depth + 1;
+						child.maxDepth = this.maxDepth;
+						
+						child.itemTemplate = this.itemTemplate;
+						Polymer.dom(childrenContainer).appendChild(child);
+
+						i++;
+					}
+				else
+					Polymer.dom(this.root).querySelector("[children-toolbar]").style.display = 'none'
+
+				this.childrenContainer.style.overflow = 'hidden';
+
+				if(this.maxDepth >= 0 && this.depth > this.maxDepth)
+					this.collapse();
+				else
+					this.expand();
+			}
+		});
+	})();
+</script> 
