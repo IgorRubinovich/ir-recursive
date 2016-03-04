@@ -1,4 +1,4 @@
-# embedded-media
+# ir-recursive
 
 **A templated recursive element for Polymer 1.0**
 
