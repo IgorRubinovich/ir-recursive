@@ -5,7 +5,7 @@
     }
   </style>
   <template>
-    <content id="templates" select="template.item"></content>
+    <content id="templates"></content>
   </template>
 </dom-module>
 <script>
@@ -50,7 +50,17 @@
 		},
 		
 		ready: function() {
-			var ri, template = Polymer.dom(this.$.templates).getDistributedNodes()[0];
+			var ri, templates = Polymer.dom(this.$.templates).getDistributedNodes(),
+				template, editTemplate;
+			templates.forEach(function(el) {
+				if(el.hasAttribute('item'))
+					template = el;
+				if(el.hasAttribute('edit'))
+					editTemplate = el;
+				if(el.hasAttribute('create'))
+					createTemplate = el;
+			});
+
 			this.itemTemplate = template;
 			//this.templatize(template);
 			//this.itemTemplate = template;
@@ -102,6 +112,8 @@
 			
 			ri = document.createElement('ir-recursive-item');
 			ri.itemTemplate = template;
+			ri.editTemplate = editTemplate;
+			ri.createTemplate = createTemplate;
 			ri.data = this.data;	
 			ri.initSelector = this.initSelector;
 			ri.onInit  = this.onInit;
@@ -137,6 +149,14 @@
 					notify: true,
 				},
 				itemTemplate: {
+					type : Object,
+					notify: true
+				},
+				editTemplate: {
+					type : Object,
+					notify: true
+				},
+				createTemplate: {
 					type : Object,
 					notify: true
 				},
@@ -182,6 +202,93 @@
 						this.fire('update-styles');
 					}.bind(this), i);
 			},
+
+			edit : function(ev) {
+
+				var contentEl = ev.target;
+
+				while(!contentEl.parentNode.hasAttribute('content'))
+					contentEl = contentEl.parentNode;
+
+				contentEl = contentEl.parentNode;
+
+				if(this.editTemplate)
+				{
+					this.templatize(this.editTemplate);
+
+					var clone = this.stamp(this.commands);
+
+					contentEl.innerHTML = "";
+					Polymer.dom(contentEl).appendChild(clone.root);
+
+					contentEl.querySelector('[close-button]').addEventListener('click', function() {
+						
+						contentEl.parentNode.removeChild(contentEl);
+						this.initializeTemplate(false);
+
+					}.bind(this));
+
+					contentEl.querySelector('[save-button]').addEventListener('click', function(ev) {
+						this.data.title = this.querySelector('[edit-input]').value;
+
+						contentEl.parentNode.removeChild(contentEl);
+						this.initializeTemplate(false);
+					}.bind(this));
+
+				}
+				
+			},
+
+			create : function(ev)
+			{
+				var contentEl = ev.target;
+
+				while(!contentEl.parentNode.hasAttribute('content'))
+					contentEl = contentEl.parentNode;
+
+				contentEl = contentEl.parentNode;
+
+				if(this.createTemplate)
+				{
+					this.templatize(this.createTemplate);
+
+					var clone = this.stamp(this.commands);
+
+					contentEl.innerHTML = "";
+					Polymer.dom(contentEl).appendChild(clone.root);
+
+					contentEl.querySelector('[close-button]').addEventListener('click', function() {
+						contentEl.parentNode.removeChild(contentEl);
+						this.initializeTemplate(false);
+					}.bind(this));
+
+					contentEl.querySelector('[save-button]').addEventListener('click', function() {
+
+						var newData = {};
+
+						newData['title'] = this.querySelector('[create-title]').value;
+						newData['content'] = this.querySelector('[create-content]').value; 
+
+						if(!this.data['children'])
+							this.data['children'] = [];
+
+						this.data['children'].push(newData);
+
+						var child = document.createElement('ir-recursive-item');
+							child.data = this.data.children[this.data.children.length - 1];
+							child.depth = this.depth + 1;
+							child.maxDepth = this.maxDepth;
+							
+							child.itemTemplate = this.itemTemplate;
+							child.editTemplate = this.editTemplate;
+							child.createTemplate = this.createTemplate;
+							Polymer.dom( Polymer.dom(this.root).querySelector(".children")).appendChild(child);
+
+							contentEl.parentNode.removeChild(contentEl);
+							this.initializeTemplate(false);
+					}.bind(this));
+				}
+			},
 			
 			updateStyles : function() {
 				var totalHeight = 0, i = 0;
@@ -205,25 +312,32 @@
 				this.collapsers.forEach(function(el) { el.style.display = !this.collapsed ? "inline-block" : "none" }.bind(this));
 			},
 
-			attached: function() {
+			initializeTemplate : function(withChild) {
 				var i = 0, childrenContainer, child;
 				if(!this.itemTemplate)
 					return;
 								
 				this.templatize(this.itemTemplate);
 
-				var clone = this.stamp(this.commands), e, c;
+				var clone = this.stamp(this.commands), e, c, eb, cb;
 
 				console.log(this.data);
 				
 				clone.data = this.data;
 				clone.itemTemplate = this.itemTemplate;
+				clone.editTemplate = this.editTemplate;
+				clone.createTemplate = this.createTemplate;
 				
-				Polymer.dom(this.root).appendChild(clone.root);
+				if(withChild)
+					Polymer.dom(this.root).appendChild(clone.root);
+				else
+					Polymer.dom(this.root).querySelector('.wrapper').insertBefore(clone.root.querySelector('[content]'), Polymer.dom(this.root).querySelector('.wrapper').children[0]);
 				
 				this.childrenContainer = childrenContainer = Polymer.dom(this.root).querySelector(".children");
 				this.expanders = e = Array.prototype.slice.call(Polymer.dom(this.root).querySelectorAll("[expand]"));
 				this.collapsers = c = Array.prototype.slice.call(Polymer.dom(this.root).querySelectorAll("[collapse]"));
+				this.editButtons = eb = Array.prototype.slice.call(Polymer.dom(this.root).querySelectorAll("[edit-button]"));
+				this.createButtons = cb = Array.prototype.slice.call(Polymer.dom(this.root).querySelectorAll("[create-button]"));
 				e.forEach(function(el) { 
 					el.style.display = 'none';
 					el.addEventListener('click', this.expand.bind(this));
@@ -231,30 +345,47 @@
 				c.forEach(function(el) { 
 					el.addEventListener('click', this.collapse.bind(this));
 				}.bind(this));
-				
+				eb.forEach(function(el) {
+					el.addEventListener('click', this.edit.bind(this));
+				}.bind(this));
+				cb.forEach(function(el) {
+					el.addEventListener('click', this.create.bind(this));
+				}.bind(this));
+
 				this.addEventListener('update-styles', this.updateStyles );
-				if(this.data.children)
-					while(i < this.data.children.length)
-					{
-						child = document.createElement('ir-recursive-item');
-						child.data = this.data.children[i];
-						child.depth = this.depth + 1;
-						child.maxDepth = this.maxDepth;
+
+				if(withChild) {
+					if(this.data.children)
+						while(i < this.data.children.length)
+						{
+							child = document.createElement('ir-recursive-item');
+							child.data = this.data.children[i];
+							child.depth = this.depth + 1;
+							child.maxDepth = this.maxDepth;
+							
+							child.itemTemplate = this.itemTemplate;
+							child.editTemplate = this.editTemplate;
+							child.createTemplate = this.createTemplate;
+							Polymer.dom(childrenContainer).appendChild(child);
+
+							i++;
+						}
+					else
+						Polymer.dom(this.root).querySelector("[children-toolbar]").querySelector("[nav-group]").style.display = 'none';
 						
-						child.itemTemplate = this.itemTemplate;
-						Polymer.dom(childrenContainer).appendChild(child);
 
-						i++;
-					}
-				else
-					Polymer.dom(this.root).querySelector("[children-toolbar]").style.display = 'none'
-
+				}
+				
 				this.childrenContainer.style.overflow = 'hidden';
 
 				if(this.maxDepth >= 0 && this.depth > this.maxDepth)
 					this.collapse();
 				else
 					this.expand();
+			},
+
+			attached: function() {
+				this.initializeTemplate(true);
 			}
 		});
 	})();
