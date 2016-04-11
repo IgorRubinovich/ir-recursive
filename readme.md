@@ -37,20 +37,29 @@ Provides only the recursion and basic collapse/expand functionality (for now).
 				</div>
 			</template>
 			<template edit>
-				<p>testtest</p>
-				<input value="[[ data.content ]]" edit-input>
+				<p>Edit</p>
+				<input value="[[ data.title ]]" placeholder="title" edit-input>
 				<div edit-nav>
 					<paper-icon-button icon="close" close-button></paper-icon-button>
 					<paper-icon-button icon="save" save-button></paper-icon-button>
 				</div>
 			</template>
 			<template create>
-				<p>test create</p>
-				<input value="[[ data.title ]]" create-title>
-				<input value="[[ data.content ]]" create-content>
+				<p>Create</p>
+				<input value="[[ data.title ]]" placeholder="title" create-title>
+				<input value="[[ data.content ]]" placeholder="content" create-content>
 				<div create-nav>
 					<paper-icon-button icon="close" close-button></paper-icon-button>
 					<paper-icon-button icon="save" save-button></paper-icon-button>
+				</div>
+			</template>
+			<template delete>
+				<p>Delete</p>
+				<div delete-nav>
+					<paper-icon-button icon="close" close-button></paper-icon-button>
+					<paper-button simple-delete>Delete</paper-button>
+					<paper-button delete-with-child-nodes>Delete with child Nodes</paper-button>
+					<paper-button recursive-delete>Recursive delete</paper-button>
 				</div>
 			</template>
 		</ir-recursive>

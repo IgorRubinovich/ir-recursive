@@ -51,7 +51,7 @@
 		
 		ready: function() {
 			var ri, templates = Polymer.dom(this.$.templates).getDistributedNodes(),
-				template, editTemplate;
+				template, editTemplate, createTemplate, deleteTemplate;
 			templates.forEach(function(el) {
 				if(el.hasAttribute('item'))
 					template = el;
@@ -59,6 +59,8 @@
 					editTemplate = el;
 				if(el.hasAttribute('create'))
 					createTemplate = el;
+				if(el.hasAttribute('delete'))
+					deleteTemplate = el;
 			});
 
 			this.itemTemplate = template;
@@ -114,6 +116,7 @@
 			ri.itemTemplate = template;
 			ri.editTemplate = editTemplate;
 			ri.createTemplate = createTemplate;
+			ri.deleteTemplate = deleteTemplate;
 			ri.data = this.data;	
 			ri.initSelector = this.initSelector;
 			ri.onInit  = this.onInit;
@@ -204,13 +207,7 @@
 			},
 
 			edit : function(ev) {
-
-				var contentEl = ev.target;
-
-				while(!contentEl.parentNode.hasAttribute('content'))
-					contentEl = contentEl.parentNode;
-
-				contentEl = contentEl.parentNode;
+				contentEl = Polymer.dom(this.root).querySelector('[content]');
 
 				if(this.editTemplate)
 				{
@@ -239,15 +236,9 @@
 				
 			},
 
-			create : function(ev)
-			{
-				var contentEl = ev.target;
-
-				while(!contentEl.parentNode.hasAttribute('content'))
-					contentEl = contentEl.parentNode;
-
-				contentEl = contentEl.parentNode;
-
+			create : function(ev) {
+				contentEl = Polymer.dom(this.root).querySelector('[content]');
+				
 				if(this.createTemplate)
 				{
 					this.templatize(this.createTemplate);
@@ -278,16 +269,77 @@
 							child.data = this.data.children[this.data.children.length - 1];
 							child.depth = this.depth + 1;
 							child.maxDepth = this.maxDepth;
+							child.parent = this;
 							
 							child.itemTemplate = this.itemTemplate;
 							child.editTemplate = this.editTemplate;
 							child.createTemplate = this.createTemplate;
+							child.deleteTemplate = this.deleteTemplate;
 							Polymer.dom( Polymer.dom(this.root).querySelector(".children")).appendChild(child);
 
 							contentEl.parentNode.removeChild(contentEl);
 							this.initializeTemplate(false);
 					}.bind(this));
 				}
+			},
+
+			setupDelete : function(ev) {
+				contentEl = Polymer.dom(this.root).querySelector('[content]');
+
+				if(this.deleteTemplate)
+				{
+					this.templatize(this.deleteTemplate);
+
+					var clone = this.stamp(this.commands);
+
+					contentEl.innerHTML = "";
+					Polymer.dom(contentEl).appendChild(clone.root);
+
+					contentEl.querySelector('[close-button]').addEventListener('click', function() {
+						contentEl.parentNode.removeChild(contentEl);
+						this.initializeTemplate(false);
+					}.bind(this));
+
+					contentEl.querySelector('[simple-delete]').addEventListener('click', this._delete.bind(this));
+
+					contentEl.querySelector('[delete-with-child-nodes]').addEventListener('click', this._delete.bind(this));
+
+					contentEl.querySelector('[recursive-delete]').addEventListener('click', this.recursiveDelete.bind(this));
+				}
+			},
+
+			recursiveDelete : function(ev) {
+
+				if(this.data['children'])
+				{
+					var kids = this.querySelector('.children').children;
+					for(var i = 0; i < kids.length; i++)
+						kids[0].recursiveDelete();
+				}
+				this._delete();
+
+			},
+
+			_delete : function() {			
+				for(var item in this.data)
+					delete this.data[item];
+
+				if(this.parent)
+				{
+					var parentKids = this.parent.data['children'];
+
+					for(var i = 0; i < parentKids.length; i++)
+						if(this.isEmptyObject(parentKids[i]))
+							parentKids.splice(i, 1);
+				}
+
+				this.parentNode.removeChild(this);
+			},
+
+			isEmptyObject : function(obj) {
+				for(var field in obj) return false;
+
+				return true;
 			},
 			
 			updateStyles : function() {
@@ -319,7 +371,7 @@
 								
 				this.templatize(this.itemTemplate);
 
-				var clone = this.stamp(this.commands), e, c, eb, cb;
+				var clone = this.stamp(this.commands), e, c, eb, cb, db;
 
 				console.log(this.data);
 				
@@ -327,6 +379,7 @@
 				clone.itemTemplate = this.itemTemplate;
 				clone.editTemplate = this.editTemplate;
 				clone.createTemplate = this.createTemplate;
+				clone.deleteTemplate = this.deleteTemplate;
 				
 				if(withChild)
 					Polymer.dom(this.root).appendChild(clone.root);
@@ -338,6 +391,7 @@
 				this.collapsers = c = Array.prototype.slice.call(Polymer.dom(this.root).querySelectorAll("[collapse]"));
 				this.editButtons = eb = Array.prototype.slice.call(Polymer.dom(this.root).querySelectorAll("[edit-button]"));
 				this.createButtons = cb = Array.prototype.slice.call(Polymer.dom(this.root).querySelectorAll("[create-button]"));
+				this.deleteButtons = db = Array.prototype.slice.call(Polymer.dom(this.root).querySelectorAll("[delete-button]"));
 				e.forEach(function(el) { 
 					el.style.display = 'none';
 					el.addEventListener('click', this.expand.bind(this));
@@ -351,6 +405,9 @@
 				cb.forEach(function(el) {
 					el.addEventListener('click', this.create.bind(this));
 				}.bind(this));
+				db.forEach(function(el) {
+					el.addEventListener('click', this.setupDelete.bind(this));
+				}.bind(this));
 
 				this.addEventListener('update-styles', this.updateStyles );
 
@@ -362,10 +419,12 @@
 							child.data = this.data.children[i];
 							child.depth = this.depth + 1;
 							child.maxDepth = this.maxDepth;
+							child.parent = this;
 							
 							child.itemTemplate = this.itemTemplate;
 							child.editTemplate = this.editTemplate;
 							child.createTemplate = this.createTemplate;
+							child.deleteTemplate = this.deleteTemplate;
 							Polymer.dom(childrenContainer).appendChild(child);
 
 							i++;
