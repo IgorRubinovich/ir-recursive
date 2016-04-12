@@ -6,6 +6,15 @@
   </style>
   <template>
     <content id="templates"></content>
+    <iron-ajax
+    	id="getDataLoader"
+    	method="GET"
+    	handle-as="json"
+    	url="http://localhost:5000/category/json/?limit=100"
+    	last-response="{{ reqData }}"
+    	on-response="transformData"
+    	debounce-duration="300"
+    ></iron-ajax>
   </template>
 </dom-module>
 <script>
@@ -17,7 +26,15 @@
 				type: Object,
 				notify: true
 			},
-			
+			reqData : {
+				type: Object,
+				value : {}
+			},	
+			tree : {
+				type: Object,
+				value : {},
+				observer : "treeReady"
+			},		
 			itemTemplate: {
 				type: Object,
 				notify: true
@@ -48,24 +65,47 @@
 			ev._height = 0;
 			ev.style.height = 0;
 		},
+
+		treeReady : function() {
+			if(!this.isTreeEmpty())
+				this.drawTemplates();
+		},
+
+		isTreeEmpty : function() {
+			for(var field in this.tree) 
+				return false;
+
+			return true;
+		},
+
+		transformData : function() {
+
+		},
 		
 		ready: function() {
-			var ri, templates = Polymer.dom(this.$.templates).getDistributedNodes(),
-				template, editTemplate, createTemplate, deleteTemplate;
-			templates.forEach(function(el) {
-				if(el.hasAttribute('item'))
-					template = el;
-				if(el.hasAttribute('edit'))
-					editTemplate = el;
-				if(el.hasAttribute('create'))
-					createTemplate = el;
-				if(el.hasAttribute('delete'))
-					deleteTemplate = el;
-			});
 
-			this.itemTemplate = template;
+			var templates = Polymer.dom(this.$.templates).getDistributedNodes(),
+				scriptTemplate;
+			templates.forEach(function(el) {
+				if(el.hasAttribute('script-t'))
+					scriptTemplate = el;
+			});
 			//this.templatize(template);
 			//this.itemTemplate = template;
+
+			if(scriptTemplate)
+			{
+				this.templatize(scriptTemplate);
+
+				var clone = this.stamp(this.commands);
+
+				Polymer.dom(this.root).appendChild(clone.root);
+
+				this.fire('script-ready');
+
+				this.$.getDataLoader.generateRequest();
+			}
+				
 			
 			this.data = {
 				title : "Some title A",
@@ -111,13 +151,33 @@
 					}
 				]				
 			}
-			
+
+		},
+
+		drawTemplates : function() {
+			var ri, templates = Polymer.dom(this.$.templates).getDistributedNodes(),
+				template, editTemplate, createTemplate, deleteTemplate, scriptTemplate;
+			templates.forEach(function(el) {
+				if(el.hasAttribute('item'))
+					template = el;
+				if(el.hasAttribute('edit'))
+					editTemplate = el;
+				if(el.hasAttribute('create'))
+					createTemplate = el;
+				if(el.hasAttribute('delete'))
+					deleteTemplate = el;
+				if(el.hasAttribute('script-t'))
+					scriptTemplate = el;
+			});
+
+			this.itemTemplate = template;			
+
 			ri = document.createElement('ir-recursive-item');
 			ri.itemTemplate = template;
 			ri.editTemplate = editTemplate;
 			ri.createTemplate = createTemplate;
 			ri.deleteTemplate = deleteTemplate;
-			ri.data = this.data;	
+			ri.data = this.tree;	
 			ri.initSelector = this.initSelector;
 			ri.onInit  = this.onInit;
 			ri.maxDepth = this.maxDepth;

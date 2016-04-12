@@ -10,14 +10,63 @@ Provides only the recursion and basic collapse/expand functionality (for now).
 
 ## Sample usage
 
-		<ir-recursive max-depth="1">
-			<template item> 
+		<ir-recursive id="testRec" max-depth="1">
+			<template script-t>
+				<script>
+					document.querySelector('#testRec').addEventListener('script-ready', function() { 
+						this.transformData = function() { 
+							var tree = { 
+									title : "Категории",
+									content : "",
+									children : []
+								};
+
+								var categoryList = {};
+
+								this.reqData.forEach(function(el) {
+									if(el['postcategory']) 
+									{
+										var elTitle = el.postcategory[0].title,
+											elContent = el.postcategory[0].content;
+
+										if(!categoryList[elTitle])
+										{
+											categoryList[elTitle] = elTitle;
+
+											var cObj = {
+												title : elTitle,
+												content : elContent,
+												children : [ {
+													title : el.title, 
+													content : el.content
+												}]};
+
+											tree.children.push(cObj); 
+										} 
+										else 
+											for(var i = 0; i < tree.children.length; i++) 
+												if(tree.children[i].title == elTitle) 
+													tree.children[i].children.push({ title : el.title, content : el.content });
+									} 
+									else 
+										if(!categoryList[el.title]) 
+											tree.children.push({ title : el.title, content : el.content, children : [] });
+								}.bind(this));
+
+								this.tree = tree; 
+								console.log(this.tree); 
+						}; 
+					})
+				</script>
+			</template>
+			<template item>
 				<style>
 					.wrapper { display: inline-block; box-shadow : 0px 0px 10px lightblue; margin-top : 10px; }
 					[children-toolbar] { background : lightblue; padding : 3px 0 3px 5px }
 					.content { display : block; padding : 10px 0 10px 10px; }
 					.lm { padding-left : 10px; margin-bottom : 10px; }
-					paper-icon-button { width : 20px; font-size : 10px; } .xxxcontent { padding : 10px }
+					paper-icon-button { width : 20px; font-size : 10px; } 
+					.xxxcontent { padding : 10px }
 				</style>
 				<div class="wrapper">
 					<div class="xxxcontent" content>
@@ -33,7 +82,8 @@ Provides only the recursion and basic collapse/expand functionality (for now).
 							<paper-icon-button icon="add-box" create-button></paper-icon-button>
 						</div>
 					</div>
-					<div class="lm children"></div>
+					<div class="lm children">
+					</div>
 				</div>
 			</template>
 			<template edit>
