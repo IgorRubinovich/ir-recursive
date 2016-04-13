@@ -80,6 +80,7 @@ Provides only the recursion and basic collapse/expand functionality (for now).
 							</div>
 							<paper-icon-button icon="create" edit-button></paper-icon-button>
 							<paper-icon-button icon="add-box" create-button></paper-icon-button>
+							<paper-icon-button icon="delete" delete-button></paper-icon-button>
 						</div>
 					</div>
 					<div class="lm children">
