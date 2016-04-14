@@ -405,9 +405,13 @@
 
 				item = JSON.parse(item);
 
-				this.$.addLoader.url = "/category/json/" + this.data.id + "/add/";
-				this.$.addLoader.body = JSON.stringify({ 'id' : item.id });
-				this.$.addLoader.generateRequest();
+				if(this.data.id != 0)
+				{
+					this.$.addLoader.url = "/category/json/" + this.data.id + "/add/";
+					this.$.addLoader.body = JSON.stringify({ 'id' : item.id });
+					this.$.addLoader.generateRequest();
+				}
+				
 
 				newData['id'] = item.id;
 				newData['title'] = item.title;
@@ -471,11 +475,12 @@
 
 			},
 
-			_delete : function() {			
+			_delete : function() {	
+
 				this.$.deleteLoader.url = "/category/json/" + this.data.id + "/delete/";
 				this.$.deleteLoader.contentType = "application/x-www-form-urlencoded";
 				this.$.deleteLoader.generateRequest();
-
+				
 				for(var item in this.data)
 					delete this.data[item];					
 
