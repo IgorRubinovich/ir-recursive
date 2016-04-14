@@ -10,7 +10,7 @@
     	id="getDataLoader"
     	method="GET"
     	handle-as="json"
-    	url="http://localhost:5000/category/json/?limit=100"
+    	url="/category/json/?limit=100"
     	last-response="{{ reqData }}"
     	on-response="transformData"
     	debounce-duration="300"
@@ -79,6 +79,10 @@
 		},
 
 		transformData : function() {
+
+		},
+
+		handleItem : function() {
 
 		},
 		
@@ -199,6 +203,30 @@
     }
   </style>
   <template>
+  	<iron-ajax
+		id="getItemLoader"
+		content-type="application/json"
+		method="GET"
+		handle-as="json"
+		on-response="editItem"
+		debounce-duration="300"
+		verbose=true
+	></iron-ajax>
+	<iron-ajax
+		id="addLoader"
+		method="POST"
+		content-type="application/json"
+		handle-as="json"
+		debounce-duration="300"
+		verbose=true
+	></iron-ajax>
+	<iron-ajax
+		id="deleteLoader"
+		method="DELETE"
+		handle-as="json"
+		debounce-duration="300"
+		verbose=true
+	></iron-ajax>
   </template>
 </dom-module>
 
@@ -210,6 +238,10 @@
 				data: {
 					type: Object,
 					notify: true,
+				},
+				lastItem: {
+					type: Object,
+					value: {}
 				},
 				itemTemplate: {
 					type : Object,
@@ -278,6 +310,28 @@
 					contentEl.innerHTML = "";
 					Polymer.dom(contentEl).appendChild(clone.root);
 
+					var iframe = document.createElement('shadow-iframe');
+						iframe.urlParams ='{ "noCache" : "true" }';
+						iframe.hijackForm = true;
+						iframe.url = "/category/partial/" + this.data.id + "/edit";
+						var that = this;
+						iframe.formSubmitted = function(ev) {
+							this.isSubmitInProgress = false;
+							this.httpMethod = null;
+
+							var item;
+
+							that.$.getItemLoader.url = "/category/json/" + that.data.id + "/?noCache=true";
+							that.$.getItemLoader.generateRequest();
+							
+								
+							this.setDisplayMode('ready');
+
+							this._form = null;
+						};
+
+					Polymer.dom(contentEl).appendChild(iframe);
+
 					contentEl.querySelector('[close-button]').addEventListener('click', function() {
 						
 						contentEl.parentNode.removeChild(contentEl);
@@ -296,6 +350,19 @@
 				
 			},
 
+			editItem : function() {
+				var contentEl = Polymer.dom(this.root).querySelector('[content]');
+
+				var item = this.$.getItemLoader.lastResponse;
+
+				this.data.id = item.id;
+				this.data.title = item.title;
+				this.data.content = item.content;
+
+				contentEl.parentNode.removeChild(contentEl);
+				this.initializeTemplate(false);
+			},
+
 			create : function(ev) {
 				contentEl = Polymer.dom(this.root).querySelector('[content]');
 				
@@ -307,40 +374,64 @@
 
 					contentEl.innerHTML = "";
 					Polymer.dom(contentEl).appendChild(clone.root);
+					
+					var iframe = document.createElement('shadow-iframe');
+						iframe.urlParams ='{ "noCache" : "true" }';
+						iframe.hijackForm = true;
+						iframe.url = "/category/partial/create";
+						iframe.submitUrl = "/category/json";
+						var that = this;
+						iframe.formSubmitted = function(ev) {
+							this.isSubmitInProgress = false;
+							this.httpMethod = null;
+							that.createItem(this.lastFormResponse);
+							this.setDisplayMode('ready');
+
+							this._form = null;
+						};
+					
+					Polymer.dom(contentEl).appendChild(iframe);
 
 					contentEl.querySelector('[close-button]').addEventListener('click', function() {
 						contentEl.parentNode.removeChild(contentEl);
 						this.initializeTemplate(false);
 					}.bind(this));
-
-					contentEl.querySelector('[save-button]').addEventListener('click', function() {
-
-						var newData = {};
-
-						newData['title'] = this.querySelector('[create-title]').value;
-						newData['content'] = this.querySelector('[create-content]').value; 
-
-						if(!this.data['children'])
-							this.data['children'] = [];
-
-						this.data['children'].push(newData);
-
-						var child = document.createElement('ir-recursive-item');
-							child.data = this.data.children[this.data.children.length - 1];
-							child.depth = this.depth + 1;
-							child.maxDepth = this.maxDepth;
-							child.parent = this;
-							
-							child.itemTemplate = this.itemTemplate;
-							child.editTemplate = this.editTemplate;
-							child.createTemplate = this.createTemplate;
-							child.deleteTemplate = this.deleteTemplate;
-							Polymer.dom( Polymer.dom(this.root).querySelector(".children")).appendChild(child);
-
-							contentEl.parentNode.removeChild(contentEl);
-							this.initializeTemplate(false);
-					}.bind(this));
 				}
+			},
+
+			createItem : function(item) {
+				var newData = {};
+				var contentEl = Polymer.dom(this.root).querySelector('[content]');
+
+				item = JSON.parse(item);
+
+				this.$.addLoader.url = "/category/json/" + this.data.id + "/add/";
+				this.$.addLoader.body = JSON.stringify({ 'id' : item.id });
+				this.$.addLoader.generateRequest();
+
+				newData['id'] = item.id;
+				newData['title'] = item.title;
+				newData['content'] = item.content; 
+
+				if(!this.data['children'])
+					this.data['children'] = [];
+
+				this.data['children'].push(newData);
+
+				var child = document.createElement('ir-recursive-item');
+					child.data = this.data.children[this.data.children.length - 1];
+					child.depth = this.depth + 1;
+					child.maxDepth = this.maxDepth;
+					child.parent = this;
+					
+					child.itemTemplate = this.itemTemplate;
+					child.editTemplate = this.editTemplate;
+					child.createTemplate = this.createTemplate;
+					child.deleteTemplate = this.deleteTemplate;
+					Polymer.dom(Polymer.dom(this.root).querySelector(".children")).appendChild(child);
+
+					contentEl.parentNode.removeChild(contentEl);
+					this.initializeTemplate(false);
 			},
 
 			setupDelete : function(ev) {
@@ -370,10 +461,10 @@
 
 			recursiveDelete : function(ev) {
 
-				if(this.data['children'])
+				if(this.data['children'] && this.data.children.length > 0)
 				{
 					var kids = this.querySelector('.children').children;
-					for(var i = 0; i < kids.length; i++)
+					while(kids.length)
 						kids[0].recursiveDelete();
 				}
 				this._delete();
@@ -381,8 +472,12 @@
 			},
 
 			_delete : function() {			
+				this.$.deleteLoader.url = "/category/json/" + this.data.id + "/delete/";
+				this.$.deleteLoader.contentType = "application/x-www-form-urlencoded";
+				this.$.deleteLoader.generateRequest();
+
 				for(var item in this.data)
-					delete this.data[item];
+					delete this.data[item];					
 
 				if(this.parent)
 				{
