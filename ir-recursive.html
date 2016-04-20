@@ -38,6 +38,10 @@
 			reqData : {
 				type: Object,
 				value : {}
+			},
+			notifyUrl : {
+				type : String,
+				value : ""
 			},	
 			tree : {
 				type: Object,
@@ -96,7 +100,7 @@
 		},
 
 		transformData : function() {
-
+			this.tree = this.reqData;
 		},
 
 		handleItem : function() {
@@ -117,6 +121,11 @@
 		
 		ready: function() {
 
+			if(this.notifyUrl)
+				this.$.getDataLoader.url = this.notifyUrl;
+
+			this.$.getDataLoader.generateRequest();
+
 			this.addEventListener('delete-ev', function(ev) {
 				if(this.isAvail)
 				{
@@ -133,22 +142,20 @@
 				if(el.hasAttribute('script-t'))
 					scriptTemplate = el;
 			});
-			//this.templatize(template);
-			//this.itemTemplate = template;
 
 			if(scriptTemplate)
 			{
 				this.templatize(scriptTemplate);
-
-				var clone = this.stamp(this.commands);
-
-				Polymer.dom(this.root).appendChild(clone.root);
-
-				this.fire('script-ready');
-
-				this.$.getDataLoader.generateRequest();
-			}
 				
+				var clone = this.stamp(this.commands);
+				
+				Polymer.dom(this.root).appendChild(clone.root);
+				
+				this.fire('script-ready');
+			}
+
+			//this.templatize(template);
+			//this.itemTemplate = template;	
 			
 			this.data = {
 				title : "Some title A",
@@ -604,6 +611,10 @@
 
 				if(withChild) {
 					if(this.data.children)
+					{
+						if(this.data.children.length == 0)
+							Polymer.dom(this.root).querySelector("[children-toolbar]").querySelector("[nav-group]").style.display = 'none';
+
 						while(i < this.data.children.length)
 						{
 							child = document.createElement('ir-recursive-item');
@@ -620,6 +631,7 @@
 
 							i++;
 						}
+					}
 					else
 						Polymer.dom(this.root).querySelector("[children-toolbar]").querySelector("[nav-group]").style.display = 'none';
 						

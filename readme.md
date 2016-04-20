@@ -14,51 +14,7 @@ Provides only the recursion and basic collapse/expand functionality (for now).
 			<template script-t>
 				<script>
 					document.querySelector('#testRec').addEventListener('script-ready', function() { 
-						this.transformData = function() { 
-							var tree = { 
-									id : 0,
-									title : "Категории",
-									content : "",
-									children : []
-								};
-
-								var categoryList = {};
-
-								this.reqData.forEach(function(el) {
-									if(el['postcategory']) 
-									{
-										var elId = el.postcategory[0].id,
-											elTitle = el.postcategory[0].title,
-											elContent = el.postcategory[0].content;
-
-										if(!categoryList[elTitle])
-										{
-											categoryList[elTitle] = elTitle;
-											var cObj = {
-													id : elId,
-													title : elTitle,
-													content : elContent,
-													children : [ {
-															id : el.id,
-															title : el.title,
-															content : el.content
-														} ]
-												};
-											tree.children.push(cObj);
-										} 
-										else 
-											for(var i = 0; i < tree.children.length; i++) 
-												if(tree.children[i].title == elTitle) 
-													tree.children[i].children.push({ id : el.id, title : el.title, content : el.content });
-									} 
-									else 
-										if(!categoryList[el.title]) 
-											tree.children.push({ id : el.id, title : el.title, content : el.content, children : [] });
-								}.bind(this));
-
-								this.tree = tree;
-								console.log(this.tree);
-						}; 
+						console.log(this);
 					})
 					</script>
 				</template>
