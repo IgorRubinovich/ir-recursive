@@ -1,0 +1,143 @@
+<dom-module id="ir-recursive-menu">  
+  <style>
+    :host {
+      display: block;
+    }
+  </style>
+  <template>
+
+ 	<template is="dom-repeat" items="{{ data }}" as="category">
+ 		<p>{{ category.title }} :</p>
+	  	<paper-dropdown-menu label="{{ category.title }}">
+	  		<paper-menu data-index$="{{ index }}" class="dropdown-content" attr-for-selected="value" on-iron-select="pushData">
+				<template is="dom-repeat" items="{{ category.children }}">
+					<paper-item value="{{ item }}">{{ item.title }}</paper-item>
+			  	</template>
+	  		</paper-menu>
+		</paper-dropdown-menu>
+	</template>
+
+    <iron-ajax
+    	id="getTreeLoader"
+    	method="GET"
+    	handle-as="json"
+    	url="/category/json/?limit=100"
+    	last-response="{{ tree }}"
+    	on-response="transformData"
+    	debounce-duration="300"
+    ></iron-ajax>
+  </template>
+</dom-module>
+<script>
+(function(){
+	Polymer({
+		is: 'ir-recursive-menu',
+		properties: {
+			data: {
+				type: Array,
+				value: []
+			},
+			selection: {
+				type: Array,
+				value: []
+			},
+			notifyUrl : {
+				type : String,
+				value : ""
+			},
+			tree : {
+				type: Object,
+				value : {}
+			},
+			valuePath : {
+				type : String,
+				value : 'id'
+			},
+			value : {
+				type : String,
+				value : ""
+			}
+		},
+		 
+
+		isTreeEmpty : function() {
+			for(var field in this.tree) 
+				return false;
+
+			return true;
+		},
+
+		transformData : function() {
+			this.push('data', this.tree);
+		},
+
+		pushData : function(ev) {
+			var item = ev.detail.item,
+				parent = Polymer.dom(item).parentNode.getAttribute('data-index');
+
+			this.splice('data', parent + 1, this.data.length);
+
+			this.push('data', item.value);	
+
+			this.set('value', this.get(this.valuePath, item.value));
+		},
+
+		ready: function() {
+
+			this.set('data', []);
+
+			if(this.notifyUrl)
+				this.$.getTreeLoader.url = this.notifyUrl;
+
+			this.$.getTreeLoader.generateRequest();
+			
+			/*this.data = {
+				title : "Some title A",
+				content : "Some content",
+				children : [
+					{
+						title : "Some child title A1",
+						content : "Some child content",
+						children : [
+							{
+								title : "Some child title A1.1",
+								content : "Some child content"
+							},
+							{
+								title : "Some child title A1.2",
+								content : "Some child content",
+								children : [
+									{
+										title : "Some child title A2.21",
+										content : "Some child content"
+									},
+									{
+										title : "Some child title A2.22",
+										content : "Some child content"
+									}						
+								]
+							}						
+						]
+					},
+					{
+						title : "Some child title A2",
+						content : "Some child content",
+						children : [
+							{
+								title : "Some child title A2.1",
+								content : "Some child content"
+							},
+							{
+								title : "Some child title A2.2",
+								content : "Some child content"
+							}						
+						]
+					}
+				]				
+			}*/
+
+		}
+
+  });
+}());
+</script> 

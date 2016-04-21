@@ -42,6 +42,11 @@
 			notifyUrl : {
 				type : String,
 				value : ""
+			},
+			withSelect : {
+				type : Boolean,
+				value : false,
+				notify : true
 			},	
 			tree : {
 				type: Object,
@@ -226,8 +231,11 @@
 			ri.itemTemplate = template;
 			ri.editTemplate = editTemplate;
 			ri.createTemplate = createTemplate;
+			if(this.withSelect)
+				ri.withSelect = true;
 			ri.deleteTemplate = deleteTemplate;
-			ri.data = this.tree;	
+			ri.data = this.tree;
+			ri.id = this.tree.id;	
 			ri.initSelector = this.initSelector;
 			ri.onInit  = this.onInit;
 			ri.maxDepth = this.maxDepth;
@@ -573,7 +581,7 @@
 
 				console.log(this.data);
 				
-				clone.data = this.data;
+				clone.data = this.data;					
 				clone.itemTemplate = this.itemTemplate;
 				clone.editTemplate = this.editTemplate;
 				clone.createTemplate = this.createTemplate;
@@ -619,9 +627,15 @@
 						{
 							child = document.createElement('ir-recursive-item');
 							child.data = this.data.children[i];
+							child.id = this.data.children[i].id;
+							child.onclick = function(ev) {
+								var target = ev.currentTarget;
+								if(target.style.display != "none")
+									target.style.display = "none";
+							}
 							child.depth = this.depth + 1;
 							child.maxDepth = this.maxDepth;
-							child.parent = this;
+							child.parent = this;								
 							
 							child.itemTemplate = this.itemTemplate;
 							child.editTemplate = this.editTemplate;
