@@ -7,13 +7,15 @@
   <template>
 
  	<template is="dom-repeat" items="{{ data }}" as="category">
-	  	<paper-dropdown-menu label="{{ category.title }}">
-	  		<paper-menu data-index$="{{ index }}" class="dropdown-content" attr-for-selected="value" on-iron-select="pushData">
-				<template is="dom-repeat" items="{{ category.children }}">
-					<paper-item value="{{ item }}">{{ item.title }}</paper-item>
-			  	</template>
-	  		</paper-menu>
-		</paper-dropdown-menu>
+		<div>
+			<paper-dropdown-menu label="{{ category.title }}">
+				<paper-menu data-index$="{{ index }}" class="dropdown-content" attr-for-selected="value" on-iron-select="pushData">
+					<template is="dom-repeat" items="{{ category.children }}">
+						<paper-item value="{{ item }}">{{ item.title }}</paper-item>
+					</template>
+				</paper-menu>
+			</paper-dropdown-menu>
+		</div>
 	</template>
 
     <iron-ajax
