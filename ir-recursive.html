@@ -76,6 +76,10 @@
 			itemsToDelete: {
 				type: Array,
 				value: []
+			},
+			itemUrl: {
+				type: String,
+				notify: true
 			}
 		},
 		  
@@ -240,6 +244,8 @@
 			ri.onInit  = this.onInit;
 			ri.maxDepth = this.maxDepth;
 			ri.depth = 0;
+			if(this.itemUrl)
+				ri.itemUrl = this.itemUrl;
 			
 			Polymer.dom(this.root).appendChild(ri);
 		}
@@ -284,11 +290,15 @@
 			properties: {
 				data: {
 					type: Object,
-					notify: true,
+					notify: true
 				},
 				lastItem: {
 					type: Object,
 					value: {}
+				},
+				itemUrl : {
+					type: String,
+					notify: true
 				},
 				itemTemplate: {
 					type : Object,
@@ -360,7 +370,7 @@
 					var iframe = document.createElement('shadow-iframe');
 						iframe.urlParams ='{ "noCache" : "true" }';
 						iframe.hijackForm = true;
-						iframe.url = "/category/partial/" + this.data.id + "/edit";
+						iframe.url = "/" + this.itemUrl + "/partial/" + this.data.id + "/edit";
 						var that = this;
 						iframe.formSubmitted = function(ev) {
 							this.isSubmitInProgress = false;
@@ -368,7 +378,7 @@
 
 							var item;
 
-							that.$.getItemLoader.url = "/category/json/" + that.data.id + "/?noCache=true";
+							that.$.getItemLoader.url = "/" + that.itemUrl + "/json/" + that.data.id + "/?noCache=true";
 							that.$.getItemLoader.generateRequest();
 							
 								
@@ -379,19 +389,23 @@
 
 					Polymer.dom(contentEl).appendChild(iframe);
 
-					contentEl.querySelector('[close-button]').addEventListener('click', function() {
-						
-						contentEl.parentNode.removeChild(contentEl);
-						this.initializeTemplate(false);
+					var closebutton, savebutton;
 
-					}.bind(this));
+					if(closebutton = contentEl.querySelector('[close-button]'))
+						closebutton.addEventListener('click', function() {
 
-					contentEl.querySelector('[save-button]').addEventListener('click', function(ev) {
-						this.data.title = this.querySelector('[edit-input]').value;
+							contentEl.parentNode.removeChild(contentEl);
+							this.initializeTemplate(false);
 
-						contentEl.parentNode.removeChild(contentEl);
-						this.initializeTemplate(false);
-					}.bind(this));
+						}.bind(this));
+
+					if(savebutton = contentEl.querySelector('[save-button]'))
+						savebutton.addEventListener('click', function(ev) {
+							this.data.title = this.querySelector('[edit-input]').value;
+
+							contentEl.parentNode.removeChild(contentEl);
+							this.initializeTemplate(false);
+						}.bind(this));
 
 				}
 				
@@ -425,8 +439,8 @@
 					var iframe = document.createElement('shadow-iframe');
 						iframe.urlParams ='{ "noCache" : "true" }';
 						iframe.hijackForm = true;
-						iframe.url = "/category/partial/create";
-						iframe.submitUrl = "/category/json";
+						iframe.url = "/" + this.itemUrl + "/partial/create";
+						iframe.submitUrl = "/" + this.itemUrl + "/json";
 						var that = this;
 						iframe.formSubmitted = function(ev) {
 							this.isSubmitInProgress = false;
@@ -439,10 +453,13 @@
 					
 					Polymer.dom(contentEl).appendChild(iframe);
 
-					contentEl.querySelector('[close-button]').addEventListener('click', function() {
-						contentEl.parentNode.removeChild(contentEl);
-						this.initializeTemplate(false);
-					}.bind(this));
+					var closebutton;
+
+					if(closebutton = contentEl.querySelector('[close-button]'))
+						closebutton.addEventListener('click', function() {
+							contentEl.parentNode.removeChild(contentEl);
+							this.initializeTemplate(false);
+						}.bind(this));
 				}
 			},
 
@@ -454,7 +471,7 @@
 
 				if(this.data.id != 0)
 				{
-					this.$.addLoader.url = "/category/json/" + this.data.id + "/add/";
+					this.$.addLoader.url = "/" + this.itemUrl + "/json/" + this.data.id + "/add/";
 					this.$.addLoader.body = JSON.stringify({ 'id' : item.id });
 					this.$.addLoader.generateRequest();
 				}
@@ -474,7 +491,9 @@
 					child.depth = this.depth + 1;
 					child.maxDepth = this.maxDepth;
 					child.parent = this;
-					
+					if(this.itemUrl)
+						child.itemUrl = this.itemUrl;
+
 					child.itemTemplate = this.itemTemplate;
 					child.editTemplate = this.editTemplate;
 					child.createTemplate = this.createTemplate;
@@ -497,16 +516,22 @@
 					contentEl.innerHTML = "";
 					Polymer.dom(contentEl).appendChild(clone.root);
 
-					contentEl.querySelector('[close-button]').addEventListener('click', function() {
-						contentEl.parentNode.removeChild(contentEl);
-						this.initializeTemplate(false);
-					}.bind(this));
+					var closebutton, simple, withChild, recursiveDel;
 
-					contentEl.querySelector('[simple-delete]').addEventListener('click', this._delete.bind(this));
+					if(closebutton = contentEl.querySelector('[close-button]'))
+						closebutton.addEventListener('click', function() {
+							contentEl.parentNode.removeChild(contentEl);
+							this.initializeTemplate(false);
+						}.bind(this));
 
-					contentEl.querySelector('[delete-with-child-nodes]').addEventListener('click', this._delete.bind(this));
+					if(simple = contentEl.querySelector('[simple-delete]'))
+						simple.addEventListener('click', this._delete.bind(this));
 
-					contentEl.querySelector('[recursive-delete]').addEventListener('click', this.recursiveDelete.bind(this));
+					if(withChild = contentEl.querySelector('[delete-with-child-nodes]'))
+						withChild.addEventListener('click', this._delete.bind(this));
+
+					if(recursiveDel = contentEl.querySelector('[recursive-delete]'))
+						recursiveDel.addEventListener('click', this.recursiveDelete.bind(this));
 				}
 			},
 
@@ -523,7 +548,7 @@
 			},
 
 			_delete : function() {	
-				var itemUrl = "/category/json/" + this.data.id + "/delete/";
+				var itemUrl = "/" + this.itemUrl + "/json/" + this.data.id + "/delete/";
 
 				this.fire('delete-ev', itemUrl);
 				
@@ -628,14 +653,11 @@
 							child = document.createElement('ir-recursive-item');
 							child.data = this.data.children[i];
 							child.id = this.data.children[i].id;
-							child.onclick = function(ev) {
-								var target = ev.currentTarget;
-								if(target.style.display != "none")
-									target.style.display = "none";
-							}
 							child.depth = this.depth + 1;
 							child.maxDepth = this.maxDepth;
-							child.parent = this;								
+							child.parent = this;
+							if(this.itemUrl)
+								child.itemUrl = this.itemUrl;
 							
 							child.itemTemplate = this.itemTemplate;
 							child.editTemplate = this.editTemplate;
