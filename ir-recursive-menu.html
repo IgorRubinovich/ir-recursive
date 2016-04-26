@@ -78,7 +78,7 @@
 
 			this.splice('data', parent + 1, this.data.length);
 
-			if(item.value.children && item.value.children.length);
+			if(item.value.children && item.value.children.length)
 				this.push('data', item.value);
 
 			this.set('value', this.get(this.valuePath, item.value));
