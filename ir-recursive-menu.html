@@ -15,7 +15,7 @@
 					</template>
 				</paper-menu>
 			</paper-dropdown-menu>
-			<paper-icon-button icon="cancel" on-click="removeCategory" data-index$="{{ index }}" hidden></paper-icon-button>
+			<paper-icon-button icon="clear" on-click="removeCategory" data-index$="{{ index }}" hidden></paper-icon-button>
 		</div>
 	</template>
 
@@ -95,32 +95,37 @@
 		},
 
 		hideButton : function() {
-			var menuList = Polymer.dom(this.root).querySelectorAll('.drop-menu');
+			var menuList = this.querySelectorAll('.drop-menu');
 
 			if(!menuList.length)
 					return;
 
 			for(var i = 0; i < menuList.length; i++)
-				menuList[i].querySelector('paper-icon-button').hidden = false;
+			{
+				if(i == menuList.length - 1)
+					menuList[i].querySelector('paper-icon-button').hidden = true;
+				else
+					menuList[i].querySelector('paper-icon-button').hidden = false;
+			}
 		},
 
 		removeCategory : function(ev) {
 			var index = ev.currentTarget.getAttribute('data-index'),
-				menuList = Polymer.dom(this.root).querySelectorAll('.drop-menu');
+				menuList = this.querySelectorAll('.drop-menu');
 
 			if(index == 0)
 			{
 				this.data.splice(1, this.data.length);
 				Polymer.dom.flush();
 				this.set('value', '');
-				Polymer.dom(this.root).querySelectorAll('paper-menu')[0].selected = null;
+				this.querySelectorAll('paper-menu')[0].selected = null;
 				index = 1;
 			}
 			else
 			{
 				this.data.splice(index, this.data.length);
 				Polymer.dom.flush();
-				this.set('value', Polymer.dom(this.root).querySelectorAll('paper-menu')[this.data.length - 1].selected);
+				this.set('value', this.querySelectorAll('paper-menu')[this.data.length - 1].selected);
 			}
 
 			if(this.data.length < this.depth)
@@ -139,7 +144,9 @@
 				}
 			}
 
-			this.hideButton();
+			this.async(function() {
+				this.hideButton();
+			});
 		},
 
 		setLabel : function(index, title) {
@@ -169,7 +176,7 @@
 				Polymer.dom.flush();
 				var preselectId = this.preselect[0].id;
 				this.preselect.shift();
-				Polymer.dom(this.root).querySelectorAll('paper-menu')[0].selected = preselectId;
+				this.querySelectorAll('paper-menu')[0].selected = preselectId;
 			}
 		},
 
@@ -209,21 +216,23 @@
 			{
 				this.async(function() {
 					Polymer.dom.flush();
-					Polymer.dom(this.root).querySelectorAll('paper-menu')[this.data.length - 1].selected = this.preselect[0].id;
+					this.querySelectorAll('paper-menu')[this.data.length - 1].selected = this.preselect[0].id;
 					this.preselect.shift();
 				});
 			}
 
+			this.async(function() {
+				if(this.depth > 1 && ((this.data.length == this.depth &&
+								!this.querySelectorAll('paper-dropdown-menu')[this.data.length - 1].querySelector('paper-menu').selected)
+								|| (this.data.length < this.depth)
+						))
+					this.set('value', '');
+				else
+					this.set('value', this.get(this.valuePath, item.value));
 
-			if(this.depth > 1 && ((this.data.length == this.depth &&
-					!Polymer.dom(this.root).querySelectorAll('paper-dropdown-menu')[this.data.length - 1].querySelector('paper-menu').selected)
-				|| (this.data.length < this.depth)
-			))
-				this.set('value', '');
-			else
-				this.set('value', this.get(this.valuePath, item.value));
-
-			this.hideButton();
+				this.fire('iron-select');
+				this.hideButton();
+			});
 		},
 
 		ready: function() {
