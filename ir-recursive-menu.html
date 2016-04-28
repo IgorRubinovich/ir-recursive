@@ -106,8 +106,7 @@
 
 		removeCategory : function(ev) {
 			var index = ev.currentTarget.getAttribute('data-index'),
-				menuList = Polymer.dom(this.root).querySelectorAll('.drop-menu'),
-				dataLength = this.data.length;
+				menuList = Polymer.dom(this.root).querySelectorAll('.drop-menu');
 
 			if(index == 0)
 			{
@@ -129,15 +128,16 @@
 
 			this.fire('iron-select');
 
-			if(dataLength > 1)
-				for(var i = this.data.length; i < menuList.length; i++)
-				{
-					var item = this.querySelectorAll('.drop-menu');
+			for(var i = this.data.length; i < menuList.length; i++)
+			{
+				var item = this.querySelectorAll('.drop-menu');
 
+				if(item.length - 1 != 0)
+				{
 					item = item[item.length - 1];
 					item.parentNode.removeChild(item);
 				}
-
+			}
 
 			this.hideButton();
 		},
