@@ -131,7 +131,13 @@
 
 			if(dataLength > 1)
 				for(var i = this.data.length; i < menuList.length; i++)
-					menuList[i].parentNode.removeChild(menuList[i]);
+				{
+					var item = this.querySelectorAll('.drop-menu');
+
+					item = item[item.length - 1];
+					item.parentNode.removeChild(item);
+				}
+
 
 			this.hideButton();
 		},
@@ -161,8 +167,9 @@
 			{
 
 				Polymer.dom.flush();
-				Polymer.dom(this.root).querySelectorAll('paper-menu')[0].selected = this.preselect[0].id;
+				var preselectId = this.preselect[0].id;
 				this.preselect.shift();
+				Polymer.dom(this.root).querySelectorAll('paper-menu')[0].selected = preselectId;
 			}
 		},
 
