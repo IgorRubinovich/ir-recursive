@@ -214,7 +214,11 @@
 				});
 			}
 
-			if(this.depth > 1 && this.data.length - 1 < this.depth)
+
+			if(this.depth > 1 && ((this.data.length == this.depth &&
+					!Polymer.dom(this.root).querySelectorAll('paper-dropdown-menu')[this.data.length - 1].querySelector('paper-menu').selected)
+				|| (this.data.length < this.depth)
+			))
 				this.set('value', '');
 			else
 				this.set('value', this.get(this.valuePath, item.value));
