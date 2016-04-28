@@ -7,14 +7,15 @@
   <template>
 
  	<template is="dom-repeat" items="{{ data }}" as="category">
-		<div>
-			<paper-dropdown-menu label="{{ category.title }}">
-				<paper-menu data-index$="{{ index }}" class="dropdown-content" attr-for-selected="value" on-iron-select="pushData">
+		<div class="drop-menu">
+			<paper-dropdown-menu class$="{{ customClass }}" label$="{{ setLabel(index, category.title) }}" no-label-float>
+				<paper-menu data-index$="{{ index }}" class="dropdown-content" attr-for-selected="name" on-iron-select="pushData">
 					<template is="dom-repeat" items="{{ category.children }}">
-						<paper-item value="{{ item }}">{{ item.title }}</paper-item>
+						<paper-item name="{{ item.id }}" value="{{ item }}">{{ item.title }}</paper-item>
 					</template>
 				</paper-menu>
 			</paper-dropdown-menu>
+			<paper-icon-button icon="cancel" on-click="removeCategory" data-index$="{{ index }}" hidden></paper-icon-button>
 		</div>
 	</template>
 
@@ -56,7 +57,32 @@
 			},
 			value : {
 				type : String,
-				value : ""
+				value : "",
+				notify : true
+			},
+			preselect : {
+				type : Array,
+				value : []
+			},
+			topLabel : {
+				type : String,
+				value : '',
+				notify : true
+			},
+			subLabel : {
+				type : String,
+				value : '',
+				notify : true
+			},
+			customClass : {
+				type : String,
+				value : '',
+				notify : true
+			},
+			depth : {
+				type : Number,
+				value : 1,
+				notify : true
 			}
 		},
 		 
@@ -68,8 +94,99 @@
 			return true;
 		},
 
+		hideButton : function() {
+			var menuList = Polymer.dom(this.root).querySelectorAll('.drop-menu');
+
+			if(!menuList.length)
+					return;
+
+			for(var i = 0; i < menuList.length; i++)
+				menuList[i].querySelector('paper-icon-button').hidden = false;
+		},
+
+		removeCategory : function(ev) {
+			var index = ev.currentTarget.getAttribute('data-index'),
+				menuList = Polymer.dom(this.root).querySelectorAll('.drop-menu'),
+				dataLength = this.data.length;
+
+			if(index == 0)
+			{
+				this.data.splice(1, this.data.length);
+				Polymer.dom.flush();
+				this.set('value', '');
+				Polymer.dom(this.root).querySelectorAll('paper-menu')[0].selected = null;
+				index = 1;
+			}
+			else
+			{
+				this.data.splice(index, this.data.length);
+				Polymer.dom.flush();
+				this.set('value', Polymer.dom(this.root).querySelectorAll('paper-menu')[this.data.length - 1].selected);
+			}
+
+			if(this.data.length < this.depth)
+				this.set('value', '');
+
+			this.fire('iron-select');
+
+			if(dataLength > 1)
+				for(var i = this.data.length; i < menuList.length; i++)
+					menuList[i].parentNode.removeChild(menuList[i]);
+
+			this.hideButton();
+		},
+
+		setLabel : function(index, title) {
+			var result;
+
+			if(this.topLabel.length > 0 && index == 0)
+				result = this.topLabel;
+			if(this.subLabel.length > 0 && index != 0)
+				result = this.subLabel;
+
+			if(result)
+					return result;
+			else
+					return title;
+		},
+
 		transformData : function() {
+			if(this.value.length > 0)
+				if(this.tree.id != this.value)
+					this.searchPreselect(this.tree.children);
+
 			this.push('data', this.tree);
+
+			if(this.preselect.length > 0)
+			{
+
+				Polymer.dom.flush();
+				Polymer.dom(this.root).querySelectorAll('paper-menu')[0].selected = this.preselect[0].id;
+				this.preselect.shift();
+			}
+		},
+
+		searchPreselect : function(kids) {
+			var branch = null;
+			
+			kids.forEach(function(el) {
+				if(el.id != this.value)
+				{
+					if(el.children && el.children)
+						if(this.searchPreselect(el.children))
+						{
+							this.preselect.unshift(el);
+							branch = el;
+						}
+				}
+				else
+				{
+					this.preselect.unshift(el);
+					branch = el;
+				}
+			}.bind(this));
+
+			return branch;
 		},
 
 		pushData : function(ev) {
@@ -81,12 +198,30 @@
 			if(item.value.children && item.value.children.length)
 				this.push('data', item.value);
 
-			this.set('value', this.get(this.valuePath, item.value));
+			if(this.preselect.length > 0)
+			{
+				this.async(function() {
+					Polymer.dom.flush();
+					Polymer.dom(this.root).querySelectorAll('paper-menu')[this.data.length - 1].selected = this.preselect[0].id;
+					this.preselect.shift();
+				});
+			}
+
+			if(this.depth > 1 && this.data.length - 1 < this.depth)
+				this.set('value', '');
+			else
+				this.set('value', this.get(this.valuePath, item.value));
+
+			this.hideButton();
 		},
 
 		ready: function() {
 
+			if(this.value.length > 0)
+				this.fire('iron-select');
+
 			this.set('data', []);
+			this.set('preselect', []);
 
 			if(this.notifyUrl)
 				this.$.getTreeLoader.url = this.notifyUrl;
