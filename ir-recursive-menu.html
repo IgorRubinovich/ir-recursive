@@ -102,7 +102,7 @@
 
 			for(var i = 0; i < menuList.length; i++)
 			{
-				if(i == menuList.length - 1)
+				if(i == menuList.length - 1 && !menuList[i].querySelector('paper-menu').selected)
 					menuList[i].querySelector('paper-icon-button').hidden = true;
 				else
 					menuList[i].querySelector('paper-icon-button').hidden = false;
