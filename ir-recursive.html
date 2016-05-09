@@ -428,6 +428,12 @@
 						};
 
 					Polymer.dom(contentEl).appendChild(iframe);
+					this.updateStyles();
+
+					for(i = 0; i <= 400; i += 100)
+						setTimeout(function() {
+							this.fire('update-styles');
+						}.bind(this), i);
 
 					var closebutton, savebutton;
 
@@ -492,6 +498,11 @@
 						};
 					
 					Polymer.dom(contentEl).appendChild(iframe);
+					this.updateStyles();
+					for(i = 0; i <= 400; i += 100)
+						setTimeout(function() {
+							this.fire('update-styles');
+						}.bind(this), i);
 
 					var closebutton;
 
@@ -556,6 +567,11 @@
 
 					contentEl.innerHTML = "";
 					Polymer.dom(contentEl).appendChild(clone.root);
+					this.updateStyles();
+					for(i = 0; i <= 400; i += 100)
+						setTimeout(function() {
+							this.fire('update-styles');
+						}.bind(this), i);
 
 					var closebutton, simple, withChild, recursiveDel;
 
