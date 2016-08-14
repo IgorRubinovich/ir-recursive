@@ -1,3 +1,6 @@
+<link rel="import" href="../iron-ajax/iron-ajax.html">
+
+
 <dom-module id="ir-recursive">  
   <style>
     :host {
@@ -5,7 +8,7 @@
     }
   </style>
   <template>
-    <content id="templates"></content>
+    <content id="templates" select="template"></content>
     <iron-ajax
     	id="getDataLoader"
     	method="GET"
@@ -41,13 +44,18 @@
 			},
 			notifyUrl : {
 				type : String,
-				value : ""
+				value : "",
+				observer : "_notifyUrlChanged"
 			},
 			withSelect : {
 				type : Boolean,
 				value : false,
 				notify : true
 			},	
+			meta : {
+				type: Object,
+				value : {}
+			},			
 			tree : {
 				type: Object,
 				value : {},
@@ -148,13 +156,15 @@
 			this.$.deleteLoader.generateRequest();
 		},
 		
+		_notifyUrlChanged : function() {
+			if(!this.notifyUrl)
+				return;
+				
+			this.$.getDataLoader.url = this.notifyUrl;
+			this.$.getDataLoader.generateRequest();		
+		},
+		
 		ready: function() {
-
-			if(this.notifyUrl)
-				this.$.getDataLoader.url = this.notifyUrl;
-
-			this.$.getDataLoader.generateRequest();
-
 			this.addEventListener('delete-ev', function(ev) {
 				if(this.isAvail)
 				{
@@ -168,7 +178,7 @@
 			var templates = Polymer.dom(this.$.templates).getDistributedNodes(),
 				scriptTemplate;
 			templates.forEach(function(el) {
-				if(el.hasAttribute('script-t'))
+				if(el.nodeType == 1 && el.hasAttribute('script-t'))
 					scriptTemplate = el;
 			});
 
@@ -185,52 +195,6 @@
 
 			//this.templatize(template);
 			//this.itemTemplate = template;	
-			
-			this.data = {
-				title : "Some title A",
-				content : "Some content",
-				children : [
-					{
-						title : "Some child title A1",
-						content : "Some child content",
-						children : [
-							{
-								title : "Some child title A1.1",
-								content : "Some child content"
-							},
-							{
-								title : "Some child title A1.2",
-								content : "Some child content",
-								children : [
-									{
-										title : "Some child title A2.21",
-										content : "Some child content"
-									},
-									{
-										title : "Some child title A2.22",
-										content : "Some child content"
-									}						
-								]
-							}						
-						]
-					},
-					{
-						title : "Some child title A2",
-						content : "Some child content",
-						children : [
-							{
-								title : "Some child title A2.1",
-								content : "Some child content"
-							},
-							{
-								title : "Some child title A2.2",
-								content : "Some child content"
-							}						
-						]
-					}
-				]				
-			}
-
 		},
 
 		drawTemplates : function() {
@@ -266,6 +230,7 @@
 			ri.onInit  = this.onInit;
 			ri.maxDepth = this.maxDepth;
 			ri.depth = 0;
+			ri.meta = this.meta;
 			
 			Polymer.dom(this.root).appendChild(ri);
 		}
@@ -310,6 +275,10 @@
 			properties: {
 				data: {
 					type: Object,
+					notify: true
+				},
+				meta: {
+					type : Object,
 					notify: true
 				},
 				lastItem: {
@@ -376,7 +345,7 @@
 
 			expand : function(ev) {
 				this.collapsed = false;
-				this.updateStyles();
+				this._updateStyles();
 
 				for(i = 0; i <= 400; i += 100)
 					setTimeout(function() {
@@ -388,7 +357,7 @@
 				this.collapsed = true;
 				this.childrenContainer.style.transition = "all 300ms";
 				this.childrenContainer._height = this.childrenContainer.getBoundingClientRect().height || this.childrenContainer._height;
-				this.updateStyles();
+				this._updateStyles();
 				for(i = 0; i <= 400; i += 100)
 					setTimeout(function() {
 						this.fire('update-styles');
@@ -428,7 +397,7 @@
 						};
 
 					Polymer.dom(contentEl).appendChild(iframe);
-					this.updateStyles();
+					this._updateStyles();
 
 					for(i = 0; i <= 400; i += 100)
 						setTimeout(function() {
@@ -498,7 +467,7 @@
 						};
 					
 					Polymer.dom(contentEl).appendChild(iframe);
-					this.updateStyles();
+					this._updateStyles();
 					for(i = 0; i <= 400; i += 100)
 						setTimeout(function() {
 							this.fire('update-styles');
@@ -567,7 +536,7 @@
 
 					contentEl.innerHTML = "";
 					Polymer.dom(contentEl).appendChild(clone.root);
-					this.updateStyles();
+					this._updateStyles();
 					for(i = 0; i <= 400; i += 100)
 						setTimeout(function() {
 							this.fire('update-styles');
@@ -630,7 +599,7 @@
 				return true;
 			},
 			
-			updateStyles : function() {
+			_updateStyles : function() {
 				var totalHeight = 0, i = 0;
 
 				if(!this.childrenContainer)
@@ -641,19 +610,25 @@
 				else
 					this.childrenContainer.style.height = this.childrenContainer._height + "px";
 					
-				while(i < this.childrenContainer.childNodes.length)
-					totalHeight += this.childrenContainer.childNodes[i++].getBoundingClientRect().height;
-
+				for(i = 0; i < this.childrenContainer.childNodes.length; i++)
+					if(this.childrenContainer.childNodes[i].getBoundingClientRect)
+						totalHeight += this.childrenContainer.childNodes[i].getBoundingClientRect().height;
+						
+						
 				this.childrenContainer._height = totalHeight;
 				if(!this.collapsed)
 					this.childrenContainer.style.height = totalHeight + "px";
 				
 				this.expanders.forEach(function(el) { el.style.display = this.collapsed ? "inline-block" : "none" }.bind(this));
 				this.collapsers.forEach(function(el) { el.style.display = !this.collapsed ? "inline-block" : "none" }.bind(this));
+				
+				this.updateStyles();
 			},
 
 			initializeTemplate : function(withChild) {
 				var i = 0, childrenContainer, child;
+
+				
 				if(!this.itemTemplate)
 					return;
 								
@@ -661,13 +636,12 @@
 
 				var clone = this.stamp(this.commands), e, c, eb, cb, db;
 
-				console.log(this.data);
-				
 				clone.data = this.data;					
 				clone.itemTemplate = this.itemTemplate;
 				clone.editTemplate = this.editTemplate;
 				clone.createTemplate = this.createTemplate;
 				clone.deleteTemplate = this.deleteTemplate;
+				clone.meta = this.meta;
 				
 				if(withChild)
 					Polymer.dom(this.root).appendChild(clone.root);
@@ -697,7 +671,7 @@
 					el.addEventListener('click', this.setupDelete.bind(this));
 				}.bind(this));
 
-				this.addEventListener('update-styles', this.updateStyles );
+				this.addEventListener('update-styles', this._updateStyles );
 
 				if(withChild) {
 					if(this.data.children)
@@ -713,6 +687,7 @@
 							child.depth = this.depth + 1;
 							child.maxDepth = this.maxDepth;
 							child.parent = this;
+							child.meta = this.meta;
 
 							"itemTemplate,editTemplate,createTemplate,deleteTemplate".split(/,/).forEach(function(tp){
 								child[tp] = this[tp];
@@ -741,7 +716,9 @@
 			},
 
 			attached: function() {
+				this.fire('beforeStamp', this);
 				this.initializeTemplate(true);
+				this.fire('afterStamp', this);
 			}
 		});
 	})();
