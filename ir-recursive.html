@@ -47,6 +47,11 @@
 				value : "",
 				observer : "_notifyUrlChanged"
 			},
+			collapsed : {
+				type : Boolean,
+				value : false,
+				notify : true
+			},	
 			withSelect : {
 				type : Boolean,
 				value : false,
@@ -232,6 +237,7 @@
 			ri.maxDepth = this.maxDepth;
 			ri.depth = 0;
 			ri.meta = this.meta;
+			ri.collapsed = this.collapsed;
 			
 			Polymer.dom(this.root).appendChild(ri);
 		}
@@ -281,6 +287,10 @@
 				meta: {
 					type : Object,
 					notify: true
+				},
+				collapsed : {
+					type : Boolean,
+					value : false
 				},
 				lastItem: {
 					type: Object,
@@ -359,6 +369,7 @@
 				this.childrenContainer.style.transition = "all 300ms";
 				this.childrenContainer._height = this.childrenContainer.getBoundingClientRect().height || this.childrenContainer._height;
 				this._updateStyles();
+				
 				for(i = 0; i <= 400; i += 100)
 					setTimeout(function() {
 						this.fire('update-styles');
@@ -512,6 +523,7 @@
 					child.depth = this.depth + 1;
 					child.maxDepth = this.maxDepth;
 					child.parent = this;
+					child.collapsed = this.collapsed;
 
 					"itemTemplate,editTemplate,createTemplate,deleteTemplate".split(/,/).forEach(function(tp){
 						child[tp] = this[tp];
@@ -606,17 +618,17 @@
 				if(!this.childrenContainer)
 					return;
 
-				if(this.collapsed)
+				if(this.depth > 0 && this.collapsed)
 					this.childrenContainer.style.height = 0 + "px";
 				else
 					this.childrenContainer.style.height = this.childrenContainer._height + "px";
 					
 				for(i = 0; i < this.childrenContainer.childNodes.length; i++)
 					if(this.childrenContainer.childNodes[i].getBoundingClientRect)
-						totalHeight += this.childrenContainer.childNodes[i].getBoundingClientRect().height;
-						
+						totalHeight += this.childrenContainer.childNodes[i].getBoundingClientRect().height;		
 						
 				this.childrenContainer._height = totalHeight;
+				
 				if(!this.collapsed)
 					this.childrenContainer.style.height = totalHeight + "px";
 				
@@ -690,6 +702,7 @@
 							child.maxDepth = this.maxDepth;
 							child.parent = this;
 							child.meta = this.meta;
+							child.collapsed = this.collapsed;
 
 							"itemTemplate,editTemplate,createTemplate,deleteTemplate".split(/,/).forEach(function(tp){
 								child[tp] = this[tp];
@@ -711,7 +724,7 @@
 				
 				this.childrenContainer.style.overflow = 'hidden';
 
-				if(this.maxDepth >= 0 && this.depth > this.maxDepth)
+				if(this.collapsed || (this.maxDepth >= 0 && this.depth > this.maxDepth))
 					this.collapse();
 				else
 					this.expand();
