@@ -222,7 +222,7 @@
 				if(el.hasAttribute('script-t'))
 					scriptTemplate = el;
 			}.bind(this));
-			debugger;
+
 			ri = document.createElement('ir-recursive-item');
 
 			"itemTemplate,editTemplate,createTemplate,deleteTemplate".split(/,/).forEach(function(tp){
@@ -244,8 +244,6 @@
 			ri.meta = this.meta;
 			ri.collapsed = this.collapsed;
 
-			debugger;
-
 			if(this.hideRoot && this.tree.children){
 				for(var cid=0, len=this.tree.children.length; cid<len; cid++){
 					var cloneri = ri.cloneit();
@@ -258,10 +256,6 @@
 			} else {
 				Polymer.dom(this.root).appendChild(ri);
 			}
-
-			debugger;
-			
-			
 		}
     });
 	
@@ -384,8 +378,6 @@
 				this.collapsed = false;
 				this._updateStyles();
 
-				debugger;
-
 				for(i = 0; i <= 400; i += 100)
 					setTimeout(function() {
 						this.fire('update-styles');
@@ -393,8 +385,6 @@
 			},
 			
 			collapse : function(ev) {
-
-				debugger;
 
 				this.collapsed = true;
 				this.childrenContainer.style.transition = "all 300ms";
@@ -533,8 +523,6 @@
 
 				item = JSON.parse(item);
 
-				debugger;
-
 				if(this.data.id != 0 && this.urlAdd)
 				{
 					this.$.addLoader.url = this.urlAdd.replace('[id]', this.data.id);
@@ -624,7 +612,6 @@
 
 			_delete : function() {	
 
-				debugger;
 				var itemUrl = this.urlDelete.replace('[id]', this.data.id);
 
 				this.fire('delete-ev', itemUrl);
@@ -652,8 +639,6 @@
 			
 			_updateStyles : function() {
 				var totalHeight = 0, i = 0;
-
-				debugger;
 
 				if(!this.childrenContainer)
 					return;
@@ -691,8 +676,6 @@
 					return;
 								
 				this.templatize(this.itemTemplate);
-
-				debugger;
 
 				var clone = this.stamp(this.commands), e, c, eb, cb, db;
 
@@ -778,8 +761,6 @@
 			},
 
 			attached: function() {
-
-				debugger;
 
 				this.fire('beforeStamp', this);
 				this.initializeTemplate(true);
