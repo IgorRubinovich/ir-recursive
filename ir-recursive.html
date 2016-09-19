@@ -533,13 +533,14 @@
 
 				item = JSON.parse(item);
 
-				//if(this.data.id != 0)
-				//{
-				//	this.$.addLoader.url = this.urlAdd.replace('[id]', this.data.id);
-				//	this.$.addLoader.body = JSON.stringify({ 'id' : item.id });
-				//	this.$.addLoader.generateRequest();
-				//}
-				
+				debugger;
+
+				if(this.data.id != 0 && this.urlAdd)
+				{
+					this.$.addLoader.url = this.urlAdd.replace('[id]', this.data.id);
+					this.$.addLoader.body = JSON.stringify({ 'id' : item.id });
+					this.$.addLoader.generateRequest();
+				}
 
 				//newData['id'] = item.id;
 				//newData['title'] = item.title;
@@ -547,8 +548,6 @@
 
 				if(!this.data['children'])
 					this.data['children'] = [];
-
-				//this.data['children'].push(newData);
 
 				this.data['children'].push(item);
 
@@ -680,7 +679,7 @@
 					this.expanders.forEach(function(el) { el.style.display= "none" }.bind(this));
 					this.collapsers.forEach(function(el) { el.style.display = "none" }.bind(this));
 				}
-				
+
 				this.updateStyles();
 			},
 
