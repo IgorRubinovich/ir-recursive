@@ -65,7 +65,10 @@
 				type: Object,
 				value : {},
 				observer : "treeReady"
-			},		
+			},					
+			hideRoot:{
+				type:Boolean
+			},
 			itemTemplate: {
 				type: Object,
 				notify: true
@@ -207,6 +210,7 @@
 			var ri, templates = Polymer.dom(this.$.templates).getDistributedNodes(),
 				scriptTemplate;
 			templates.forEach(function(el) {
+				if(el.hasAttribute == undefined) return;
 				if(el.hasAttribute('item'))
 					this.itemTemplate = el;
 				if(el.hasAttribute('edit'))
@@ -218,12 +222,13 @@
 				if(el.hasAttribute('script-t'))
 					scriptTemplate = el;
 			}.bind(this));
-
+			debugger;
 			ri = document.createElement('ir-recursive-item');
 
 			"itemTemplate,editTemplate,createTemplate,deleteTemplate".split(/,/).forEach(function(tp){
 				ri[tp] = this[tp];
 			}.bind(this));
+
 			"urlEdit,urlGet,urlCreate,urlSubmit,urlAdd,urlDelete".split(/,/).forEach(function(url){
 				ri[url] = this[url];
 			}.bind(this));
@@ -238,8 +243,25 @@
 			ri.depth = 0;
 			ri.meta = this.meta;
 			ri.collapsed = this.collapsed;
+
+			debugger;
+
+			if(this.hideRoot && this.tree.children){
+				for(var cid=0, len=this.tree.children.length; cid<len; cid++){
+					var cloneri = ri.cloneit();
+					cloneri.data = this.tree.children[cid];
+					cloneri.id = this.tree.children[cid].id;
+					cloneri.collapsed = true;
+					cloneri.depth = 1;
+					Polymer.dom(this.root).appendChild(cloneri);
+				}
+			} else {
+				Polymer.dom(this.root).appendChild(ri);
+			}
+
+			debugger;
 			
-			Polymer.dom(this.root).appendChild(ri);
+			
 		}
     });
 	
@@ -324,6 +346,10 @@
 					type : Object,
 					notify: true
 				},
+				deleteTemplate: {
+					type : Object,
+					notify: true
+				},
 				editTemplate: {
 					type : Object,
 					notify: true
@@ -358,6 +384,8 @@
 				this.collapsed = false;
 				this._updateStyles();
 
+				debugger;
+
 				for(i = 0; i <= 400; i += 100)
 					setTimeout(function() {
 						this.fire('update-styles');
@@ -365,6 +393,9 @@
 			},
 			
 			collapse : function(ev) {
+
+				debugger;
+
 				this.collapsed = true;
 				this.childrenContainer.style.transition = "all 300ms";
 				this.childrenContainer._height = this.childrenContainer.getBoundingClientRect().height || this.childrenContainer._height;
@@ -377,7 +408,7 @@
 			},
 
 			edit : function(ev) {
-				contentEl = Polymer.dom(this.root).querySelector('[content]');
+				var contentEl = Polymer.dom(this.root).querySelector('[content]');
 
 				if(this.editTemplate)
 				{
@@ -452,13 +483,14 @@
 			},
 
 			create : function(ev) {
-				contentEl = Polymer.dom(this.root).querySelector('[content]');
+				var contentEl = Polymer.dom(this.root).querySelector('[content]');
 				
 				if(this.createTemplate)
 				{
 					this.templatize(this.createTemplate);
 
 					var clone = this.stamp(this.commands);
+					if(this.data) clone.data = this.data;
 
 					contentEl.innerHTML = "";
 					Polymer.dom(contentEl).appendChild(clone.root);
@@ -466,8 +498,8 @@
 					var iframe = document.createElement('shadow-iframe');
 						iframe.urlParams ='{ "noCache" : "true" }';
 						iframe.hijackForm = true;
-						iframe.url = this.urlCreate;
-						iframe.submitUrl = this.urlSubmit;
+						iframe.url = this.urlCreate.replace('[id]', this.data.id);
+						iframe.submitUrl = this.urlSubmit.replace('[id]', this.data.id);
 						var that = this;
 						iframe.formSubmitted = function(ev) {
 							this.isSubmitInProgress = false;
@@ -501,22 +533,24 @@
 
 				item = JSON.parse(item);
 
-				if(this.data.id != 0)
-				{
-					this.$.addLoader.url = this.urlAdd.replace('[id]', this.data.id);
-					this.$.addLoader.body = JSON.stringify({ 'id' : item.id });
-					this.$.addLoader.generateRequest();
-				}
+				//if(this.data.id != 0)
+				//{
+				//	this.$.addLoader.url = this.urlAdd.replace('[id]', this.data.id);
+				//	this.$.addLoader.body = JSON.stringify({ 'id' : item.id });
+				//	this.$.addLoader.generateRequest();
+				//}
 				
 
-				newData['id'] = item.id;
-				newData['title'] = item.title;
-				newData['content'] = item.content; 
+				//newData['id'] = item.id;
+				//newData['title'] = item.title;
+				//newData['content'] = item.content; 
 
 				if(!this.data['children'])
 					this.data['children'] = [];
 
-				this.data['children'].push(newData);
+				//this.data['children'].push(newData);
+
+				this.data['children'].push(item);
 
 				var child = document.createElement('ir-recursive-item');
 					child.data = this.data.children[this.data.children.length - 1];
@@ -539,13 +573,14 @@
 			},
 
 			setupDelete : function(ev) {
-				contentEl = Polymer.dom(this.root).querySelector('[content]');
+				var contentEl = Polymer.dom(this.root).querySelector('[content]');
 
 				if(this.deleteTemplate)
 				{
 					this.templatize(this.deleteTemplate);
 
 					var clone = this.stamp(this.commands);
+					if(this.data) clone.data = this.data;
 
 					contentEl.innerHTML = "";
 					Polymer.dom(contentEl).appendChild(clone.root);
@@ -555,12 +590,14 @@
 							this.fire('update-styles');
 						}.bind(this), i);
 
-					var closebutton, simple, withChild, recursiveDel;
+					var closebuttons, simple, withChild, recursiveDel;
 
-					if(closebutton = contentEl.querySelector('[close-button]'))
-						closebutton.addEventListener('click', function() {
-							contentEl.parentNode.removeChild(contentEl);
-							this.initializeTemplate(false);
+					if(closebuttons = contentEl.querySelectorAll('[close-button]'))
+						closebuttons.forEach(function(el){ 
+							el.addEventListener('click', function() {
+								contentEl.parentNode.removeChild(contentEl);
+								this.initializeTemplate(false);
+							}.bind(this));
 						}.bind(this));
 
 					if(simple = contentEl.querySelector('[simple-delete]'))
@@ -587,6 +624,8 @@
 			},
 
 			_delete : function() {	
+
+				debugger;
 				var itemUrl = this.urlDelete.replace('[id]', this.data.id);
 
 				this.fire('delete-ev', itemUrl);
@@ -615,6 +654,8 @@
 			_updateStyles : function() {
 				var totalHeight = 0, i = 0;
 
+				debugger;
+
 				if(!this.childrenContainer)
 					return;
 
@@ -632,8 +673,13 @@
 				if(!this.collapsed)
 					this.childrenContainer.style.height = totalHeight + "px";
 				
-				this.expanders.forEach(function(el) { el.style.display = this.collapsed ? "inline-block" : "none" }.bind(this));
-				this.collapsers.forEach(function(el) { el.style.display = !this.collapsed ? "inline-block" : "none" }.bind(this));
+				if(this.data.children && this.data.children.length>0){
+					this.expanders.forEach(function(el) { el.style.display = this.collapsed ? "inline-block" : "none" }.bind(this));
+					this.collapsers.forEach(function(el) { el.style.display = !this.collapsed ? "inline-block" : "none" }.bind(this));
+				} else {
+					this.expanders.forEach(function(el) { el.style.display= "none" }.bind(this));
+					this.collapsers.forEach(function(el) { el.style.display = "none" }.bind(this));
+				}
 				
 				this.updateStyles();
 			},
@@ -646,6 +692,8 @@
 					return;
 								
 				this.templatize(this.itemTemplate);
+
+				debugger;
 
 				var clone = this.stamp(this.commands), e, c, eb, cb, db;
 
@@ -661,7 +709,7 @@
 					Polymer.dom(this.root).appendChild(clone.root);
 				else
 					Polymer.dom(this.root).querySelector('.wrapper').insertBefore(clone.root.querySelector('[content]'), Polymer.dom(this.root).querySelector('.wrapper').children[0]);
-				
+
 				this.childrenContainer = childrenContainer = Polymer.dom(this.root).querySelector(".children");
 				this.expanders = e = Array.prototype.slice.call(Polymer.dom(this.root).querySelectorAll("[expand]"));
 				this.collapsers = c = Array.prototype.slice.call(Polymer.dom(this.root).querySelectorAll("[collapse]"));
@@ -731,10 +779,21 @@
 			},
 
 			attached: function() {
+
+				debugger;
+
 				this.fire('beforeStamp', this);
 				this.initializeTemplate(true);
 				this.fire('afterStamp', this);
-			}
+			},
+			cloneit :function(){
+				var newElement = this.cloneNode(true);
+				for(var i in this.properties) {
+					newElement[i] = this[i]
+				}
+				return newElement;
+			},
+
 		});
 	})();
 </script> 
