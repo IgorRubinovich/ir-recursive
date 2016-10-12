@@ -7,8 +7,8 @@
   <template>
 
  	<template is="dom-repeat" items="{{ data }}" as="category">
-		<div class="drop-menu">
-			<paper-dropdown-menu class$="{{ customClass }}" label$="{{ setLabel(index, category.title) }}" no-label-float>
+		<div class="drop-menu" hidden="{{ category.hiddenRoot }}">
+			<paper-dropdown-menu class$="{{ customClass }}" disabled="{{true}}" label$="{{ setLabel(index, category.title) }}" no-label-float>
 				<paper-menu data-index$="{{ index }}" class="dropdown-content" attr-for-selected="name" on-iron-select="pushData">
 					<template is="dom-repeat" items="{{ category.children }}">
 						<paper-item name="{{ item.id }}" value="{{ item }}">{{ item.title }}</paper-item>
@@ -83,6 +83,10 @@
 				type : Number,
 				value : 1,
 				notify : true
+			},
+			hiddenRoot : {
+				type : Boolean,
+				value : false
 			}
 		},
 		 
@@ -113,9 +117,9 @@
 			var index = ev.currentTarget.getAttribute('data-index'),
 				menuList = this.querySelectorAll('.drop-menu');
 
-			if(index == 0)
+			if(index == 0 || (index == 1 && this.hiddenRoot))
 			{
-				this.data.splice(1, this.data.length);
+				this.data.splice( (this.hiddenRoot) ? 2 : 1 , this.data.length);
 				Polymer.dom.flush();
 				this.set('value', '');
 				this.querySelectorAll('paper-menu')[0].selected = null;
@@ -168,6 +172,9 @@
 				if(this.tree.id != this.value)
 					this.searchPreselect(this.tree.children);
 
+			if(this.tree) 
+				this.tree.hiddenRoot = this.hiddenRoot;
+
 			this.push('data', this.tree);
 
 			if(this.preselect.length > 0)
@@ -212,14 +219,16 @@
 			if(item.value.children && item.value.children.length)
 				this.push('data', item.value);
 
-			if(this.preselect.length > 0)
-			{
+			//if(this.preselect.length > 0)
+			//{
 				this.async(function() {
-					Polymer.dom.flush();
-					this.querySelectorAll('paper-menu')[this.data.length - 1].selected = this.preselect[0].id;
-					this.preselect.shift();
+					if(this.preselect.length>0){
+						Polymer.dom.flush();
+						this.querySelectorAll('paper-menu')[this.data.length - 1].selected = this.preselect[0].id;
+						this.preselect.shift();
+					}
 				});
-			}
+			//}
 
 			this.async(function() {
 				if(this.depth > 1 && ((this.data.length == this.depth &&
