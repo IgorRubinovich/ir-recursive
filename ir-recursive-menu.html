@@ -1,26 +1,34 @@
 <dom-module id="ir-recursive-menu">  
   <style>
     :host {
-      display: block;
+		display : block;
     }
   </style>
   <template>
-
- 	<template is="dom-repeat" items="{{ data }}" as="category">
-		<div class="drop-menu" hidden="{{ category.hiddenRoot }}">
-			<paper-dropdown-menu class$="{{ customClass }}" disabled="{{true}}" label$="{{ setLabel(index, category.title) }}" no-label-float>
-				<paper-menu data-index$="{{ index }}" class="dropdown-content" attr-for-selected="name" on-iron-select="pushData">
-					<template is="dom-repeat" items="{{ category.children }}">
-						<paper-item name="{{ item.id }}" value="{{ item }}">{{ item.title }}</paper-item>
-					</template>
-				</paper-menu>
-			</paper-dropdown-menu>
-			<paper-icon-button icon="clear" on-click="removeCategory" data-index$="{{ index }}" hidden></paper-icon-button>
-		</div>
-	</template>
+	<div class="layout horizontal center wrap" hidden="[[ !category.children.length ]]">
+		<template is="dom-repeat" items="{{ data }}" as="category">
+			<div class="layout horizontal end" hidden="[[ !category.children.length ]]">
+				<paper-dropdown-menu id="dropdown_[[ index ]]" label="[[ _getLabel(category, index) ]]" always-float-label="[[ alwaysFloatLabel ]]">
+					<paper-menu
+						index="{{ index }}" 
+						selected="{{ _nextSelected(index) }}" 
+						class="dropdown-content" 
+						attr-for-selected="value" 
+						on-iron-select="_selectCategory">
+						
+						<template is="dom-repeat" items="{{ category.children }}">
+							<paper-item name="{{ item.id }}" value="{{ item }}">{{ item.title }}</paper-item>
+						</template>
+					
+					</paper-menu>
+				</paper-dropdown-menu>
+				<paper-icon-button index="{{ index }}" icon="clear" on-click="_unselectCategory"></paper-icon-button>
+			</div>
+		</template>
+	</div>
 
     <iron-ajax
-    	id="getTreeLoader"
+    	id="treeLoader"
     	method="GET"
     	handle-as="json"
     	url="/category/json/?limit=100"
@@ -32,278 +40,164 @@
 </dom-module>
 <script>
 (function(){
+
+			
+	/*	expected structure:
+	
+		this.data = {
+		title : "Some title A",
+		content : "Some content",
+		children : [
+			{
+				title : "Some child title A1",
+				content : "Some child content",
+				children : [ { title, content, children }, ...]
+			},
+			{
+				title : "Some child title A1",
+				content : "Some child content",
+				children : [...]
+			},
+		]				
+	}*/
 	Polymer({
 		is: 'ir-recursive-menu',
 		properties: {
-			data: {
-				type: Array,
-				value: []
-			},
-			selection: {
-				type: Array,
-				value: []
-			},
-			notifyUrl : {
-				type : String,
-				value : ""
-			},
-			tree : {
-				type: Object,
-				value : {}
-			},
-			valuePath : {
-				type : String,
-				value : 'id'
-			},
-			value : {
-				type : String,
-				value : "",
-				notify : true
-			},
-			preselect : {
-				type : Array,
-				value : []
-			},
-			topLabel : {
-				type : String,
-				value : '',
-				notify : true
-			},
-			subLabel : {
-				type : String,
-				value : '',
-				notify : true
-			},
-			customClass : {
-				type : String,
-				value : '',
-				notify : true
-			},
-			depth : {
-				type : Number,
-				value : 1,
-				notify : true
-			},
-			hiddenRoot : {
-				type : Boolean,
-				value : false
-			}
+			data: { type: Array, value: [] },
+			notifyUrl : { type : String, notify : true }, //value : "" },
+			tree : { type: Object, value : {} },
+			value : { type : String, value : "", notify : true },
+			preselect : { type : String },
+			depth : { type : Number, value : 0, computed : "_selectionDepth(data.*)" },
+			skipRoots : { type : Number, value : 0, notify : true },
+			
+			topLabel : { type : String, value : '', notify : true }, 
+			subLabel : { type : String, value : '', notify : true },
+			alwaysFloatLabel : { type : Boolean, notify : true }
+
+			/* Probably going for good
+				selection: { type: Array, value: [] },
+				valuePath : { type : String, value : 'id' },
+				topLabel : { type : String, value : '', notify : true }, 
+				subLabel : { type : String, value : '', notify : true },
+				customClass : { type : String, value : '', notify : true },
+
+			*/
 		},
-		 
+		
+		observers : ['_getData(notifyUrl)'],
 
-		isTreeEmpty : function() {
-			for(var field in this.tree) 
-				return false;
+		_getLabel : function(item, index) {
+			if(index == 0)
+				return this.topLabel;
+			
+			if(this.subLabel)
+				return this.subLabel;
 
-			return true;
+			if(this.hasAttribute('sub-label'))
+				return item.title;
 		},
-
-		hideButton : function() {
-			var menuList = this.querySelectorAll('.drop-menu');
-
-			if(!menuList.length)
-					return;
-
-			for(var i = 0; i < menuList.length; i++)
-			{
-				if(i == menuList.length - 1 && !menuList[i].querySelector('paper-menu').selected)
-					menuList[i].querySelector('paper-icon-button').hidden = true;
-				else
-					menuList[i].querySelector('paper-icon-button').hidden = false;
-			}
+		
+		_nextSelected : function(index) {
+			return this.data[index + 1]
 		},
-
-		removeCategory : function(ev) {
-			var index = ev.currentTarget.getAttribute('data-index'),
-				menuList = this.querySelectorAll('.drop-menu');
-
-			if(index == 0 || (index == 1 && this.hiddenRoot))
-			{
-				this.data.splice( (this.hiddenRoot) ? 2 : 1 , this.data.length);
-				Polymer.dom.flush();
-				this.set('value', '');
-				this.querySelectorAll('paper-menu')[0].selected = null;
-				index = 1;
-			}
-			else
-			{
-				this.data.splice(index, this.data.length);
-				Polymer.dom.flush();
-				this.set('value', this.querySelectorAll('paper-menu')[this.data.length - 1].selected);
-			}
-
-			if(this.data.length < this.depth)
-				this.set('value', '');
-
-			this.fire('iron-select');
-
-			for(var i = this.data.length; i < menuList.length; i++)
-			{
-				var item = this.querySelectorAll('.drop-menu');
-
-				if(item.length - 1 != 0)
-				{
-					item = item[item.length - 1];
-					item.parentNode.removeChild(item);
-				}
-			}
-
-			this.async(function() {
-				this.hideButton();
-			});
+		
+		_selectionDepth : function() {
+			return this.data.length - 1; // - this.skipRoots - 1;
 		},
-
-		setLabel : function(index, title) {
-			var result;
-
-			if(this.topLabel.length > 0 && index == 0)
-				result = this.topLabel;
-			if(this.subLabel.length > 0 && index != 0)
-				result = this.subLabel;
-
-			if(result)
-					return result;
-			else
-					return title;
-		},
-
+		
 		transformData : function() {
-			if(this.value.length > 0)
-				if(this.tree.id != this.value)
-					this.searchPreselect(this.tree.children);
+			var skipRoots = this.skipRoots, startItem = this.tree;
 
-			if(this.tree) 
-				this.tree.hiddenRoot = this.hiddenRoot;
-
-			this.push('data', this.tree);
-
-			if(this.preselect.length > 0)
-			{
-
-				Polymer.dom.flush();
-				var preselectId = this.preselect[0].id;
-				this.preselect.shift();
-				this.querySelectorAll('paper-menu')[0].selected = preselectId;
-			}
-		},
-
-		searchPreselect : function(kids) {
-			var branch = null;
+			this.tree.children.push({ id : 777, title : 'dummy' })
 			
-			kids.forEach(function(el) {
-				if(el.id != this.value)
-				{
-					if(el.children && el.children)
-						if(this.searchPreselect(el.children))
-						{
-							this.preselect.unshift(el);
-							branch = el;
-						}
-				}
-				else
-				{
-					this.preselect.unshift(el);
-					branch = el;
-				}
-			}.bind(this));
+			this.set('data', []);
 
-			return branch;
+			while(skipRoots-- > 0)
+				startItem = startItem.children[0];
+				
+			if(this.preselect)
+				this._selectPreselection(startItem);
+			else
+				this.push('data', startItem)
+			
+			console.log(this.id, "got some data:", this.tree);
 		},
 
-		pushData : function(ev) {
-			var item = ev.detail.item,
-				parent = Polymer.dom(item).parentNode.getAttribute('data-index');
-
-			this.splice('data', parent + 1, this.data.length);
-
-			if(item.value.children && item.value.children.length)
-				this.push('data', item.value);
-
-			//if(this.preselect.length > 0)
-			//{
-				this.async(function() {
-					if(this.preselect.length>0){
-						Polymer.dom.flush();
-						this.querySelectorAll('paper-menu')[this.data.length - 1].selected = this.preselect[0].id;
-						this.preselect.shift();
-					}
-				});
-			//}
-
+		__selectPreselection : function(tree) {
+			var t = [];
+			if(tree.id == this.preselect)
+				return [tree];
+				
+			if(!tree.children)
+				return [];
+				
+			for(i = 0; i < tree.children.length; i++)
+				if((t = this.__selectPreselection(tree.children[i])).length)
+				{
+					t.unshift(tree);
+					return t;
+				}
+				
+			return t;
+		},
+		
+		_selectPreselection : function(tree) {
+			var selectionPath = this.__selectPreselection(tree);
+			
+			this.set("data", selectionPath);
+			
 			this.async(function() {
-				if(this.depth > 1 && ((this.data.length == this.depth &&
-								!this.querySelectorAll('paper-dropdown-menu')[this.data.length - 1].querySelector('paper-menu').selected)
-								|| (this.data.length < this.depth)
-						))
-					this.set('value', '');
-				else
-					this.set('value', this.get(this.valuePath, item.value));
-
-				this.fire('iron-select');
-				this.hideButton();
+				selectionPath.forEach(function(item, i) { this.$$('#dropdown_' + i).fire('iron-select', item); }.bind(this))
 			});
 		},
 
-		ready: function() {
+		_selectCategory : function(ev) {
+			if(Polymer.dom(ev.target).parentNode.selectedItem == ev.target.selectedItem)
+				return
+			
+			var t = ev.target.selected;
+			this.unselectCategory(ev.target.index);
+			this.push('data', t);
+			
+			if(ev.target.index >= this.data.length - 2)
+				this.set("value", t.id);
+			
+			//ev.stopPropagation();
+			
+			this.fire('iron-select', t);
+		},
+		
+		_unselectCategory : function(e) {
+			this.set("value", (e.currentTarget.index > 0) ? this.$$('#dropdown_' + index - 1).selected.id : null);
+			this.unselectCategory(e.currentTarget.index);
+		},
+		
+		unselectCategory : function(index) {
+			var t, menu;
+			
+			while(index < this.data.length - 1)
+				this.pop("data");
+				
+			menu = this.$$('#dropdown_' + index).contentElement;
+			
+			menu.selected = null;
+			menu.fire('iron-deselect');
+		},
 
+		_getData : function() {
+			if(!this.notifyUrl)
+				return;
+
+			this.$.treeLoader.url = this.notifyUrl;
+
+			this.$.treeLoader.generateRequest();
+		},
+		
+		ready: function() {
 			if(this.value.length > 0)
 				this.fire('iron-select');
-
-			this.set('data', []);
-			this.set('preselect', []);
-
-			if(this.notifyUrl)
-				this.$.getTreeLoader.url = this.notifyUrl;
-
-			this.$.getTreeLoader.generateRequest();
-			
-			/*this.data = {
-				title : "Some title A",
-				content : "Some content",
-				children : [
-					{
-						title : "Some child title A1",
-						content : "Some child content",
-						children : [
-							{
-								title : "Some child title A1.1",
-								content : "Some child content"
-							},
-							{
-								title : "Some child title A1.2",
-								content : "Some child content",
-								children : [
-									{
-										title : "Some child title A2.21",
-										content : "Some child content"
-									},
-									{
-										title : "Some child title A2.22",
-										content : "Some child content"
-									}						
-								]
-							}						
-						]
-					},
-					{
-						title : "Some child title A2",
-						content : "Some child content",
-						children : [
-							{
-								title : "Some child title A2.1",
-								content : "Some child content"
-							},
-							{
-								title : "Some child title A2.2",
-								content : "Some child content"
-							}						
-						]
-					}
-				]				
-			}*/
-
 		}
-
   });
 }());
 </script> 
