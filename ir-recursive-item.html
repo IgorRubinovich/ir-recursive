@@ -1,0 +1,459 @@
+<dom-module id="ir-recursive-item">
+  <style>
+    :host {
+      display: block;
+    }
+  </style>
+  <template>
+  	<iron-ajax
+		id="getItemLoader"
+		content-type="application/json"
+		method="GET"
+		handle-as="json"
+		on-response="editItem"
+		debounce-duration="300"
+		verbose=true
+	></iron-ajax>
+	<iron-ajax
+		id="addLoader"
+		method="POST"
+		content-type="application/json"
+		handle-as="json"
+		debounce-duration="300"
+		verbose=true
+	></iron-ajax>
+  </template>
+</dom-module>
+
+<script>
+	(function () {
+		Polymer({
+			is: 'ir-recursive-item',
+			properties: {
+				data 			: { notify : true },
+				meta 			: { notify : true },
+				collapsed 		: { value : false },
+				lastItem 		: { value : {} },
+				urlEdit 		: { notify : true },
+				urlGet 			: { notify : true },
+				urlCreate 		: { notify : true },
+				urlSubmit 		: { notify : true },
+				urlAdd 			: { notify : true },
+				urlDelete 		: { notify : true },
+				itemTemplate 	: { notify : true },
+				deleteTemplate 	: { notify : true },
+				editTemplate 	: { notify : true },
+				createTemplate 	: { notify : true },
+				initSelector 	: { notify : true },
+				onInit 			: { notify : true },
+				maxDepth 		: { notify : true },
+				depth 			: { notify : true, value : 0 }
+			},
+			behaviors: [
+				Polymer.Templatizer
+			],
+
+			expand : function(ev) {
+				this.collapsed = false;
+				this._updateStyles();
+
+				for(i = 0; i <= 400; i += 100)
+					setTimeout(function() {
+						this.fire('update-styles');
+					}.bind(this), i);
+			},
+			
+			collapse : function(ev) {
+				var i;
+
+				this.collapsed = true;
+				this.childrenContainer.style.transition = "all 300ms";
+				this.childrenContainer._height = this.childrenContainer.getBoundingClientRect().height || this.childrenContainer._height;
+				this._updateStyles();
+				
+				for(i = 0; i <= 400; i += 100)
+					setTimeout(function() {
+						this.fire('update-styles');
+					}.bind(this), i);
+			},
+
+			edit : function(ev) {
+				var contentEl = Polymer.dom(this.root).querySelector('[content]');
+
+				if(this.editTemplate)
+				{
+					this.templatize(this.editTemplate);
+
+					var clone = this.stamp(this.commands);
+
+					contentEl.innerHTML = "";
+					Polymer.dom(contentEl).appendChild(clone.root);
+
+					var iframe = document.createElement('shadow-iframe');
+						iframe.urlParams ='{ "noCache" : "true" }';
+						iframe.hijackForm = true;
+						iframe.url = this.urlEdit.replace('[id]', this.data.id);
+						var that = this;
+						iframe.formSubmitted = function(ev) {
+							this.isSubmitInProgress = false;
+							this.httpMethod = null;
+
+							var item;
+
+							that.$.getItemLoader.url = that.urlGet.replace('[id]', that.data.id);
+							that.$.getItemLoader.generateRequest();
+							
+								
+							this.setDisplayMode('ready');
+
+							this._form = null;
+						};
+
+					Polymer.dom(contentEl).appendChild(iframe);
+					this._updateStyles();
+
+					for(i = 0; i <= 400; i += 100)
+						setTimeout(function() {
+							this.fire('update-styles');
+						}.bind(this), i);
+
+					var closebutton, savebutton;
+
+					if(closebutton = contentEl.querySelector('[close-button]'))
+						closebutton.addEventListener('click', function() {
+
+							contentEl.parentNode.removeChild(contentEl);
+							this.initializeTemplate(false);
+
+						}.bind(this));
+
+					if(savebutton = contentEl.querySelector('[save-button]'))
+						savebutton.addEventListener('click', function(ev) {
+							this.data.title = this.querySelector('[edit-input]').value;
+
+							contentEl.parentNode.removeChild(contentEl);
+							this.initializeTemplate(false);
+						}.bind(this));
+
+				}
+				
+			},
+
+			editItem : function() {
+				var contentEl = Polymer.dom(this.root).querySelector('[content]');
+
+				var item = this.$.getItemLoader.lastResponse;
+
+				this.data.id = item.id;
+				this.data.title = item.title;
+				this.data.content = item.content;
+
+				contentEl.parentNode.removeChild(contentEl);
+				this.initializeTemplate(false);
+			},
+
+			create : function(ev) {
+				var contentEl = Polymer.dom(this.root).querySelector('[content]');
+				
+				if(this.createTemplate)
+				{
+					this.templatize(this.createTemplate);
+
+					var clone = this.stamp(this.commands);
+					if(this.data) clone.data = this.data;
+
+					contentEl.innerHTML = "";
+					Polymer.dom(contentEl).appendChild(clone.root);
+					
+					var iframe = document.createElement('shadow-iframe');
+						iframe.urlParams ='{ "noCache" : "true" }';
+						iframe.hijackForm = true;
+						iframe.url = this.urlCreate.replace('[id]', this.data.id);
+						iframe.submitUrl = this.urlSubmit.replace('[id]', this.data.id);
+						var that = this;
+						iframe.formSubmitted = function(ev) {
+							this.isSubmitInProgress = false;
+							this.httpMethod = null;
+							that.createItem(this.lastFormResponse);
+							this.setDisplayMode('ready');
+
+							this._form = null;
+						};
+					
+					Polymer.dom(contentEl).appendChild(iframe);
+					this._updateStyles();
+					for(i = 0; i <= 400; i += 100)
+						setTimeout(function() {
+							this.fire('update-styles');
+						}.bind(this), i);
+
+					var closebutton;
+
+					if(closebutton = contentEl.querySelector('[close-button]'))
+						closebutton.addEventListener('click', function() {
+							contentEl.parentNode.removeChild(contentEl);
+							this.initializeTemplate(false);
+						}.bind(this));
+				}
+			},
+
+			createItem : function(item) {
+				var newData = {};
+				var contentEl = Polymer.dom(this.root).querySelector('[content]');
+
+				item = JSON.parse(item);
+
+				if(this.data.id != 0 && this.urlAdd)
+				{
+					this.$.addLoader.url = this.urlAdd.replace('[id]', this.data.id);
+					this.$.addLoader.body = JSON.stringify({ 'id' : item.id });
+					this.$.addLoader.generateRequest();
+				}
+
+				//newData['id'] = item.id;
+				//newData['title'] = item.title;
+				//newData['content'] = item.content; 
+
+				if(!this.data['children'])
+					this.data['children'] = [];
+
+				this.data['children'].push(item);
+
+				var child = document.createElement('ir-recursive-item');
+					child.data = this.data.children[this.data.children.length - 1];
+					child.depth = this.depth + 1;
+					child.maxDepth = this.maxDepth;
+					child.parent = this;
+					child.collapsed = this.collapsed;
+
+					"itemTemplate,editTemplate,createTemplate,deleteTemplate".split(/,/).forEach(function(tp){
+						child[tp] = this[tp];
+					}.bind(this));
+					"urlEdit,urlGet,urlCreate,urlSubmit,urlAdd,urlDelete".split(/,/).forEach(function(url){
+						child[url] = this[url];
+					}.bind(this));
+
+					Polymer.dom(Polymer.dom(this.root).querySelector(".children")).appendChild(child);
+
+					contentEl.parentNode.removeChild(contentEl);
+					this.initializeTemplate(false);
+			},
+
+			setupDelete : function(ev) {
+				var contentEl = Polymer.dom(this.root).querySelector('[content]');
+
+				if(this.deleteTemplate)
+				{
+					this.templatize(this.deleteTemplate);
+
+					var clone = this.stamp(this.commands);
+					if(this.data) clone.data = this.data;
+
+					contentEl.innerHTML = "";
+					Polymer.dom(contentEl).appendChild(clone.root);
+					this._updateStyles();
+					for(i = 0; i <= 400; i += 100)
+						setTimeout(function() {
+							this.fire('update-styles');
+						}.bind(this), i);
+
+					var closebuttons, simple, withChild, recursiveDel;
+
+					if(closebuttons = contentEl.querySelectorAll('[close-button]'))
+						closebuttons.forEach(function(el){ 
+							el.addEventListener('click', function() {
+								contentEl.parentNode.removeChild(contentEl);
+								this.initializeTemplate(false);
+							}.bind(this));
+						}.bind(this));
+
+					if(simple = contentEl.querySelector('[simple-delete]'))
+						simple.addEventListener('click', this._delete.bind(this));
+
+					if(withChild = contentEl.querySelector('[delete-with-child-nodes]'))
+						withChild.addEventListener('click', this._delete.bind(this));
+
+					if(recursiveDel = contentEl.querySelector('[recursive-delete]'))
+						recursiveDel.addEventListener('click', this.recursiveDelete.bind(this));
+				}
+			},
+
+			recursiveDelete : function(ev) {
+
+				if(this.data['children'] && this.data.children.length > 0)
+				{
+					var kids = this.querySelector('.children').children;
+					while(kids.length)
+						kids[0].recursiveDelete();
+				}
+				this._delete();
+
+			},
+
+			_delete : function() {	
+
+				var itemUrl = this.urlDelete.replace('[id]', this.data.id);
+
+				this.fire('delete-ev', itemUrl);
+				
+				for(var item in this.data)
+					delete this.data[item];					
+
+				if(this.parent)
+				{
+					var parentKids = this.parent.data['children'];
+
+					for(var i = 0; i < parentKids.length; i++)
+						if(this.isEmptyObject(parentKids[i]))
+							parentKids.splice(i, 1);
+				}
+
+				this.parentNode.removeChild(this);
+			},
+
+			isEmptyObject : function(obj) {
+				for(var field in obj) return false;
+
+				return true;
+			},
+			
+			_updateStyles : function() {
+				var totalHeight = 0, i = 0;
+
+				if(!this.childrenContainer)
+					return;
+
+				if(this.depth > 0 && this.collapsed)
+					this.childrenContainer.style.height = 0 + "px";
+				else
+					this.childrenContainer.style.height = this.childrenContainer._height + "px";
+					
+				for(i = 0; i < this.childrenContainer.childNodes.length; i++)
+					if(this.childrenContainer.childNodes[i].getBoundingClientRect)
+						totalHeight += this.childrenContainer.childNodes[i].getBoundingClientRect().height;		
+						
+				this.childrenContainer._height = totalHeight;
+				
+				if(!this.collapsed)
+					this.childrenContainer.style.height = totalHeight + "px";
+				
+				if(this.data.children && this.data.children.length>0){
+					this.expanders.forEach(function(el) { el.style.display = this.collapsed ? "inline-block" : "none" }.bind(this));
+					this.collapsers.forEach(function(el) { el.style.display = !this.collapsed ? "inline-block" : "none" }.bind(this));
+				} else {
+					this.expanders.forEach(function(el) { el.style.display= "none" }.bind(this));
+					this.collapsers.forEach(function(el) { el.style.display = "none" }.bind(this));
+				}
+
+				this.updateStyles();
+			},
+
+			initializeTemplate : function(withChild) {
+				var i = 0, childrenContainer, child;
+
+				
+				if(!this.itemTemplate)
+					return;
+								
+				this.templatize(this.itemTemplate);
+
+				var clone = this.stamp(this.commands), e, c, eb, cb, db;
+
+				clone.data = this.data;					
+				clone.itemTemplate = this.itemTemplate;
+				clone.editTemplate = this.editTemplate;
+				clone.createTemplate = this.createTemplate;
+				clone.deleteTemplate = this.deleteTemplate;
+				clone.meta = this.meta;
+				clone.depth = this.depth;
+				
+				if(withChild)
+					Polymer.dom(this.root).appendChild(clone.root);
+				else
+					Polymer.dom(this.root).querySelector('.wrapper').insertBefore(clone.root.querySelector('[content]'), Polymer.dom(this.root).querySelector('.wrapper').children[0]);
+
+				this.childrenContainer = childrenContainer = Polymer.dom(this.root).querySelector(".children");
+				this.expanders = e = Array.prototype.slice.call(Polymer.dom(this.root).querySelectorAll("[expand]"));
+				this.collapsers = c = Array.prototype.slice.call(Polymer.dom(this.root).querySelectorAll("[collapse]"));
+				this.editButtons = eb = Array.prototype.slice.call(Polymer.dom(this.root).querySelectorAll("[edit-button]"));
+				this.createButtons = cb = Array.prototype.slice.call(Polymer.dom(this.root).querySelectorAll("[create-button]"));
+				this.deleteButtons = db = Array.prototype.slice.call(Polymer.dom(this.root).querySelectorAll("[delete-button]"));
+				e.forEach(function(el) { 
+					el.style.display = 'none';
+					el.addEventListener('click', this.expand.bind(this));
+				}.bind(this));
+				c.forEach(function(el) { 
+					el.addEventListener('click', this.collapse.bind(this));
+				}.bind(this));
+				eb.forEach(function(el) {
+					el.addEventListener('click', this.edit.bind(this));
+				}.bind(this));
+				cb.forEach(function(el) {
+					el.addEventListener('click', this.create.bind(this));
+				}.bind(this));
+				db.forEach(function(el) {
+					el.addEventListener('click', this.setupDelete.bind(this));
+				}.bind(this));
+
+				this.addEventListener('update-styles', this._updateStyles );
+
+				if(withChild) {
+					if(this.data.children)
+					{
+						if(this.data.children.length == 0)
+							Polymer.dom(this.root).querySelector("[children-toolbar]").querySelector("[nav-group]").style.display = 'none';
+
+						while(i < this.data.children.length)
+						{
+							child = document.createElement('ir-recursive-item');
+							child.data = this.data.children[i];
+							child.id = this.data.children[i].id;
+							child.depth = this.depth + 1;
+							child.maxDepth = this.maxDepth;
+							child.parent = this;
+							child.meta = this.meta;
+							child.collapsed = this.collapsed;
+
+							"itemTemplate,editTemplate,createTemplate,deleteTemplate".split(/,/).forEach(function(tp){
+								child[tp] = this[tp];
+							}.bind(this));
+							"urlEdit,urlGet,urlCreate,urlSubmit,urlAdd,urlDelete".split(/,/).forEach(function(url){
+								child[url] = this[url];
+							}.bind(this));
+
+							Polymer.dom(childrenContainer).appendChild(child);
+
+							i++;
+						}
+					}
+					else
+						Polymer.dom(this.root).querySelector("[children-toolbar]").querySelector("[nav-group]").style.display = 'none';
+						
+
+				}
+				
+				this.childrenContainer.style.overflow = 'hidden';
+
+				if(this.collapsed || (this.maxDepth >= 0 && this.depth > this.maxDepth))
+					this.collapse();
+				else
+					this.expand();
+			},
+
+			attached: function() {
+
+				this.fire('beforeStamp', this);
+				this.initializeTemplate(true);
+				this.fire('afterStamp', this);
+			},
+			cloneit :function(){
+				var newElement = this.cloneNode(true);
+				for(var i in this.properties) {
+					newElement[i] = this[i]
+				}
+				return newElement;
+			},
+
+		});
+	})();
+</script> 

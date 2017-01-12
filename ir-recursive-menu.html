@@ -64,7 +64,7 @@
 		is: 'ir-recursive-menu',
 		properties: {
 			data: { type: Array, value: [] },
-			notifyUrl : { type : String, notify : true }, //value : "" },
+			dataUrl : { type : String, notify : true }, //value : "" },
 			tree : { type: Object, value : {} },
 			value : { type : String, value : "", notify : true },
 			preselect : { type : String },
@@ -85,7 +85,7 @@
 			*/
 		},
 		
-		observers : ['_getData(notifyUrl)'],
+		observers : ['_getData(dataUrl)'],
 
 		_getLabel : function(item, index) {
 			if(index == 0)
@@ -186,10 +186,10 @@
 		},
 
 		_getData : function() {
-			if(!this.notifyUrl)
+			if(!this.dataUrl)
 				return;
 
-			this.$.treeLoader.url = this.notifyUrl;
+			this.$.treeLoader.url = this.dataUrl;
 
 			this.$.treeLoader.generateRequest();
 		},

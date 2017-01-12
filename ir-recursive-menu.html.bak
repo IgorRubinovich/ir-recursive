@@ -43,7 +43,7 @@
 				type: Array,
 				value: []
 			},
-			notifyUrl : {
+			dataUrl : {
 				type : String,
 				value : ""
 			},
@@ -90,7 +90,7 @@
 			}
 		},
 		
-		observers : ['_getData(preselect,notifyUrl)'],
+		observers : ['_getData(preselect,dataUrl)'],
 		 
 
 		isTreeEmpty : function() {
@@ -249,7 +249,7 @@
 		},
 
 		_getData : function() {
-			this.$.getTreeLoader.url = this.notifyUrl;
+			this.$.getTreeLoader.url = this.dataUrl;
 
 			this.$.getTreeLoader.generateRequest();
 		},
